@@ -1,0 +1,48 @@
+name: 构建并发布 Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装依赖
+        run: |
+          pip install --upgrade pip
+          pip install pyinstaller pillow send2trash windnd
+
+      - name: 构建 EXE
+        run: |
+          pyinstaller --noconfirm 妙喵桌宠.spec
+
+      - name: 打包为 ZIP
+        run: |
+          powershell Compress-Archive -Path dist/妙喵桌宠/* -DestinationPath MeowDesk.zip
+
+      - name: 创建 Release 并上传
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MeowDesk ${{ github.ref_name }}
+          body: |
+            妙喵桌宠 MeowDesk 自动构建
+
+            ## 使用说明
+            1. 下载 MeowDesk.zip
+            2. 解压到任意目录
+            3. 双击 `妙喵桌宠.exe` 启动
+
+            **注意**：Windows 可能提示"Windows 已保护你的电脑"，点击"更多信息"→"仍要运行"即可。
+          files: MeowDesk.zip
+          generate_release_notes: false
