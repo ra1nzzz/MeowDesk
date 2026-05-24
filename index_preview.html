@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>灵犀文件精灵 - 文件导航</title>
+<title>妙喵桌宠 MeowDesk - 文件导航</title>
 <style>
   :root {
     --bg: #0f1117;
@@ -213,7 +213,7 @@
 <div class="container">
 
   <div class="header">
-    <h1>灵犀文件精灵</h1>
+    <h1>妙喵桌宠 MeowDesk</h1>
     <p>智能文件分类归档 · 拖拽即整理</p>
   </div>
 
@@ -307,7 +307,7 @@
             <td>2026-05-20</td>
             <td>50.00 MB</td>
             <td><span class="badge badge-archive">已归档</span></td>
-            <td class="path-cell" title="D:/lingxi-file/设计稿/2026-05/设计稿v3.psd">设计稿v3.psd</td>
+            <td class="path-cell" title="D:/mewo-file/设计稿/2026-05/设计稿v3.psd">设计稿v3.psd</td>
         </tr>
         <tr>
             <td><span class="cat-dot" style="background:#10b981"></span> 💻 代码</td>
@@ -315,7 +315,7 @@
             <td>2026-05-20</td>
             <td>4.0 KB</td>
             <td><span class="badge badge-archive">已归档</span></td>
-            <td class="path-cell" title="D:/lingxi-file/代码/2026-05/deploy.py">deploy.py</td>
+            <td class="path-cell" title="D:/mewo-file/代码/2026-05/deploy.py">deploy.py</td>
         </tr>
         <tr>
             <td><span class="cat-dot" style="background:#f59e0b"></span> 🎵 音频</td>
@@ -323,7 +323,7 @@
             <td>2026-05-20</td>
             <td>15.00 MB</td>
             <td><span class="badge badge-archive">已归档</span></td>
-            <td class="path-cell" title="D:/lingxi-file/音频/2026-05/会议录音.mp3">会议录音.mp3</td>
+            <td class="path-cell" title="D:/mewo-file/音频/2026-05/会议录音.mp3">会议录音.mp3</td>
         </tr>
         <tr>
             <td><span class="cat-dot" style="background:#8b5cf6"></span> 🖼️ 图片</td>
@@ -331,7 +331,7 @@
             <td>2026-05-20</td>
             <td>2.00 MB</td>
             <td><span class="badge badge-archive">已归档</span></td>
-            <td class="path-cell" title="D:/lingxi-file/图片/2026-05/产品原型.png">产品原型.png</td>
+            <td class="path-cell" title="D:/mewo-file/图片/2026-05/产品原型.png">产品原型.png</td>
         </tr>
         <tr>
             <td><span class="cat-dot" style="background:#3b82f6"></span> 📄 文档</td>
@@ -339,7 +339,7 @@
             <td>2026-05-20</td>
             <td>3.00 MB</td>
             <td><span class="badge badge-archive">已归档</span></td>
-            <td class="path-cell" title="D:/lingxi-file/文档/2026-05/Q2季度报告.docx">Q2季度报告.docx</td>
+            <td class="path-cell" title="D:/mewo-file/文档/2026-05/Q2季度报告.docx">Q2季度报告.docx</td>
         </tr>
         <tr>
             <td><span class="cat-dot" style="background:#ef4444"></span> 📸 截图</td>
@@ -362,9 +362,11 @@
   </div>
 
   <div class="footer">
-    灵犀文件精灵 · LingXi Droplet · 数据存储于本地 D:\lingxi-file
+    妙喵桌宠 MeowDesk · 数据存储于本地 D:\mewo-file
   </div>
-
+  <div class="footer" style="margin-top:4px;font-size:12px;color:#64748b;text-align:center">
+    <a href="https://github.com/ra1nzzz/MeowDesk" target="_blank">GitHub 仓库</a> · 问题反馈 · 欢迎 Star ✨
+  </div>
 </div>
 
 <script>
@@ -388,9 +390,9 @@ function openArchiveDir() {
   try {
     // Windows
     var shell = new ActiveXObject('Shell.Application');
-    shell.Open('D:\lingxi-file'.replace(/\\/g, '\\'));
+    shell.Open('D:\mewo-file'.replace(/\\/g, '\\'));
   } catch(e) {
-    alert('请手动打开目录: D:\lingxi-file');
+    alert('请手动打开目录: D:\mewo-file');
   }
 }
 

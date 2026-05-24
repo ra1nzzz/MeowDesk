@@ -9,8 +9,8 @@ import base64, os, json, re, hashlib, datetime
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(SCRIPT_DIR, "filedb.json")
-ARCHIVE_DIR = r"D:\lingxi-file"
-ARCHIVE_URL = "D:/lingxi-file"
+ARCHIVE_DIR = r"D:\mewo-file"
+ARCHIVE_URL = "D:/mewo-file"
 PAGE_SIZE = 200
 
 SCREENSHOT_RE = re.compile(
@@ -122,7 +122,7 @@ def main():
         locate = ""
         if dest and dest != "(已回收)" and action == "archive":
             enc = base64.b64encode(dest.encode("utf-8")).decode("ascii")
-            locate = ' <a class="btn-locate" href="lingxi-locate://' + enc + '">定位</a>'
+            locate = ' <a class="btn-locate" href="mewo-locate://' + enc + '">定位</a>'
         rows.append(
             '<tr>'
             '<td data-cat="' + cat + '"><span class="cat-dot" style="background:' + color + '"></span> ' + emoji + ' ' + cat + '</td>'
@@ -138,7 +138,7 @@ def main():
     html = (
         '<!DOCTYPE html>\n<html lang="zh-CN"><head>\n'
         '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">\n'
-        '<title>灵犀文件精灵 - 文件导航</title>\n'
+        '<title>妙喵桌宠 MeowDesk - 文件导航</title>\n'
         '<style>\n'
         ':root{--bg:#0f1117;--bg2:#1a1d27;--bg3:#242837;--fg:#e2e8f0;--fg2:#94a3b8;--accent:#6366f1;--accent2:#818cf8;--border:#2d3348;--radius:12px}\n'
         '*{margin:0;padding:0;box-sizing:border-box}\n'
@@ -178,7 +178,7 @@ def main():
         '.footer{text-align:center;margin-top:48px;padding:24px 0;color:var(--fg2);font-size:12px;border-top:1px solid var(--border)}\n'
         '@media(max-width:768px){.summary{flex-direction:column}.stats-grid{grid-template-columns:1fr}.toolbar{flex-direction:column}.toolbar input,.toolbar select{width:100%}th,td{padding:10px 12px;font-size:13px}}\n'
         '</style></head><body>\n<div class="container">\n'
-        '<div class="header"><h1>灵犀文件精灵</h1><p>智能文件分类归档 · 拖拽即整理</p></div>\n'
+        '<div class="header"><h1>妙喵桌宠 MeowDesk</h1><p>智能文件分类归档 · 拖拽即整理</p></div>\n'
         '<div class="summary">'
         '<div class="summary-card"><div class="num">' + str(len(records)) + '</div><div class="label">累计处理文件</div></div>'
         '<div class="summary-card"><div class="num">' + str(len(cats)) + '</div><div class="label">文件分类数</div></div>'
@@ -197,7 +197,9 @@ def main():
         '<div id="loadMoreWrap" class="load-more" style="display:none">'
         '<button class="btn" onclick="showMore()">加载更多</button>'
         '</div>\n'
-        '<div class="footer">灵犀文件精灵 · LingXi Droplet · 共' + str(len(records)) + '个文件 · 数据存储于本地 ' + ARCHIVE_DIR + '</div>\n'
+        '<div class="footer">妙喵桌宠 MeowDesk · 共' + str(len(records)) + '个文件 · 数据存储于本地 ' + ARCHIVE_DIR + '</div>\n' + '        <div class="footer" style="margin-top:4px;font-size:12px;color:#64748b">'
+        '        <a href="https://github.com/ra1nzzz/desktopet" target="_blank">GitHub 仓库</a>'
+        '        · 问题反馈 · 欢迎 Star ✨</div>\n'
         '</div>\n'
         '<script>\n'
         'var PS=' + str(PAGE_SIZE) + ',vc=0,ar=[];\n'

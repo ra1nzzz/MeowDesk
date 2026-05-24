@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-灵犀文件精灵 v7.2 - ULW per-pixel alpha + windnd
+妙喵桌宠 MeowDesk - ULW per-pixel alpha + windnd
 """
 
 import os, sys, json, shutil, hashlib, datetime, webbrowser, math, time, random, re
@@ -33,13 +33,13 @@ def log(msg):
     line = f"[{ts}] {msg}"
     print(line)
     try:
-        with open(os.path.join(LOG_DIR, "lingxi_droplet.log"), "a", encoding="utf-8") as f:
+        with open(os.path.join(LOG_DIR, "mewo_desk.log"), "a", encoding="utf-8") as f:
             f.write(line + "\n")
     except Exception:
         pass
 
 ASSETS_DIR = os.path.join(BUNDLE_DIR, "assets")
-HTML_INDEX = r"D:\lingxi-file\index.html"
+HTML_INDEX = r"D:\mewo-file\index.html"
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "config.json")
 DB_FILE = os.path.join(SCRIPT_DIR, "filedb.json")
 
@@ -231,7 +231,7 @@ class ULWRenderer:
             gdi32.DeleteDC(self._hdc_mem)
 
 
-class LingXiCat(tk.Tk):
+class MeowDesk(tk.Tk):
     WANDER_SPEED = 1.0
     WANDER_IDLE_DELAY = 5.0
     SLEEP_DELAY = 60.0
@@ -280,7 +280,7 @@ class LingXiCat(tk.Tk):
                 self.loader.preload(state, p)
 
     def _setup_window(self):
-        self.title("灵犀文件精灵")
+        self.title("妙喵桌宠 MeowDesk")
         self.overrideredirect(True)
         self.attributes("-topmost", True)
 
@@ -791,7 +791,7 @@ def register_lingxi_protocol():
         if not os.path.exists(loc_py):
             with open(loc_py, "w", encoding="utf-8") as _f:
                 _f.write("import base64,subprocess,sys\n")
-                _f.write("u=sys.argv[1].replace(b'lingxi-locate://',b'')\n")
+                _f.write("u=sys.argv[1].replace(b'mewo-locate://',b'')\n")
                 _f.write("p=base64.b64decode(u).decode('utf-8')\n")
                 _f.write("subprocess.Popen(['explorer','/select,',p])\n")
         if not os.path.exists(bat):
@@ -807,8 +807,8 @@ def register_lingxi_protocol():
                     _f.write('set PYTHONHOME=\n')
                     _f.write('set PYTHONPATH=\n')
                     _f.write('"C:\\Program Files\\Python312\\python.exe" "%~dp0_locate.py" "%~1"\n')
-        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\lingxi-locate")
-        winreg.SetValue(key, None, winreg.REG_SZ, "URL:lingxi-locate Protocol")
+        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\mewo-locate")
+        winreg.SetValue(key, None, winreg.REG_SZ, "URL:mewo-locate Protocol")
         winreg.SetValueEx(key, "URL Protocol", 0, winreg.REG_SZ, "")
         shell = winreg.CreateKey(key, r"shell\open\command")
         winreg.SetValue(shell, None, winreg.REG_SZ, f'"{bat}" "%1"')
@@ -837,7 +837,7 @@ def generate_html_index(db, archive_dir, config):
     return "<html><body><p>HTML generation failed</p></body></html>"
 
 def load_config():
-    default = {"archive_dir": r"D:\lingxi-file", "temp_dir": r"D:\lingxi-temp", "window_position": None}
+    default = {"archive_dir": r"D:\mewo-file", "temp_dir": r"D:\mewo-temp", "window_position": None}
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -874,16 +874,16 @@ class FileDB:
 def main():
     import traceback
 
-    # --locate 模式：用于 lingxi-locate:// 协议定位文件
+    # --locate 模式：用于 mewo-locate:// 协议定位文件
     if len(sys.argv) > 1 and sys.argv[1] == "--locate":
         import base64, subprocess
-        u = sys.argv[2].replace("lingxi-locate://", "")
+        u = sys.argv[2].replace("mewo-locate://", "")
         p = base64.b64decode(u).decode("utf-8")
         subprocess.Popen(["explorer", "/select,", p])
         return
 
     log("=" * 60)
-    log("  灵犀文件精灵 v7.2 — ULW + windnd")
+    log("  妙喵桌宠 MeowDesk v1.0 — ULW + windnd")
     log("=" * 60)
     config = load_config()
     archive_dir = config["archive_dir"]
@@ -920,7 +920,7 @@ def main():
     log(f"  导航页面: {HTML_INDEX}")
     log("")
     try:
-        app = LingXiCat(config, db)
+        app = MeowDesk(config, db)
         app.mainloop()
     except Exception as e:
         tb = traceback.format_exc()

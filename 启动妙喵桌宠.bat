@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title 灵犀文件精灵
+title 妙喵桌宠 MeowDesk
 
 :: 切换到脚本所在目录
 cd /d "%~dp0"
@@ -11,7 +11,7 @@ if not exist "%PYTHON_EXE%" set "PYTHON_EXE=python"
 
 echo.
 echo  ========================================
-echo    灵犀文件精灵 - LingXi Droplet
+echo    妙喵桌宠 MeowDesk
 echo  ========================================
 echo.
 echo  Python: %PYTHON_EXE%
@@ -27,7 +27,7 @@ if exist "%~dp0lingxi_droplet_tk.py" (
 
 if %errorlevel% neq 0 (
     echo.
-    echo  [启动失败] 请查看 logs\lingxi_droplet.log
+    echo  [启动失败] 请查看 logs\mewo_desk.log
     echo.
     pause
 )

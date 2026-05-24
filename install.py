@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-灵犀文件精灵 - 安装/卸载工具
+妙喵桌宠 MeowDesk - 安装/卸载工具
 用法:
   python install.py install   — 安装（创建快捷方式 + 设置开机自启）
   python install.py uninstall — 卸载
@@ -15,7 +15,7 @@ import winreg
 import subprocess
 from pathlib import Path
 
-APP_NAME = "灵犀文件精灵"
+APP_NAME = "妙喵桌宠 MeowDesk"
 
 # 自动检测 PyQt5 所在的 Python 路径
 import shutil as _shutil
@@ -25,12 +25,12 @@ if not os.path.exists(_PYTHON_EXE):
     if _found:
         _PYTHON_EXE = _found
 SCRIPT_NAME = "lingxi_droplet.py"
-BAT_NAME = "启动文件精灵.bat"
-LINK_NAME = "灵犀文件精灵.lnk"
-STARTUP_REG = "LingXiDroplet"
+BAT_NAME = "启动妙喵桌宠.bat"
+LINK_NAME = "妙喵桌宠 MeowDesk.lnk"
+STARTUP_REG = "MeowDesk"
 
 # 安装目录: 用户 AppData\Local
-INSTALL_DIR = os.path.join(os.environ.get("LOCALAPPDATA", ""), "LingXiDroplet")
+INSTALL_DIR = os.path.join(os.environ.get("LOCALAPPDATA", ""), "MeowDesk")
 STARTUP_FOLDER = os.path.join(
     os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup"
 )
@@ -158,7 +158,7 @@ def uninstall():
         print("  (不存在)")
 
     # 提示是否删除数据目录
-    data_dirs = [r"D:\lingxi-temp", r"D:\lingxi-file"]
+    data_dirs = [r"D:\mewo-temp", r"D:\mewo-file"]
     existing = [d for d in data_dirs if os.path.exists(d)]
     if existing:
         print(f"\n  以下数据目录仍保留（归档文件不受影响）:")
@@ -203,7 +203,7 @@ def status():
     print(f"  桌面快捷方式: {'存在' if os.path.exists(desktop_link) else '不存在'}")
 
     # 检查数据目录
-    for label, d in [("临时目录", r"D:\lingxi-temp"), ("归档目录", r"D:\lingxi-file")]:
+    for label, d in [("临时目录", r"D:\mewo-temp"), ("归档目录", r"D:\mewo-file")]:
         exists = os.path.exists(d)
         size = 0
         count = 0
