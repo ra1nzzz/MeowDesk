@@ -41,7 +41,7 @@ def log(msg):
 ASSETS_DIR = os.path.join(BUNDLE_DIR, "assets")
 HTML_INDEX = r"D:\mewo-file\index.html"
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "config.json")
-DB_FILE = os.path.join(SCRIPT_DIR, "filedb.json")
+# DB_FILE 将在 main() 中根据 archive_dir 动态确定
 
 # Win32 constants
 WS_EX_LAYERED = 0x00080000
@@ -425,11 +425,12 @@ class MeowDesk(tk.Tk):
         self.withdraw()
 
     def _open_html(self):
-        if os.path.exists(HTML_INDEX):
-            webbrowser.open(HTML_INDEX)
+        idx = os.path.join(self.archive_dir, "index.html")
+        if os.path.exists(idx):
+            webbrowser.open(idx)
         else:
             self._update_html()
-            webbrowser.open(HTML_INDEX)
+            webbrowser.open(idx)
 
     def _quit(self):
         log("退出")
@@ -644,7 +645,8 @@ class MeowDesk(tk.Tk):
     def _update_html(self):
         try:
             html = generate_html_index(self.db, self.archive_dir, self.cfg)
-            with open(HTML_INDEX, "w", encoding="utf-8") as f:
+            idx = os.path.join(self.archive_dir, "index.html")
+            with open(idx, "w", encoding="utf-8") as f:
                 f.write(html)
         except Exception as e:
             log(f"[err] HTML: {e}")
@@ -814,7 +816,7 @@ def register_lingxi_protocol():
         winreg.SetValue(shell, None, winreg.REG_SZ, f'"{bat}" "%1"')
         winreg.CloseKey(shell); winreg.CloseKey(key)
     except Exception: pass
-def generate_html_index(db, archive_dir, config):
+def generate_html_index(db, archive_dir, config, db_path=None):
     gen_py = os.path.join(BUNDLE_DIR, "_gen_html.py")
     if os.path.exists(gen_py):
         try:
@@ -823,12 +825,8 @@ def generate_html_index(db, archive_dir, config):
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             # 加载后覆盖路径配置（模块级代码已设置默认值）
-            # 优先用用户数据目录，首次运行则从内置资源目录回退
-            db_path = os.path.join(SCRIPT_DIR, "filedb.json")
-            if not os.path.exists(db_path):
-                bundled = os.path.join(BUNDLE_DIR, "filedb.json")
-                if os.path.exists(bundled):
-                    db_path = bundled
+            if db_path is None:
+                db_path = os.path.join(archive_dir, ".filedb.json")
             mod.DB_FILE = db_path
             mod.ARCHIVE_DIR = archive_dir
             mod.ARCHIVE_URL = archive_dir.replace("\\", "/")
@@ -895,8 +893,20 @@ def main():
     archive_dir = config["archive_dir"]
     os.makedirs(archive_dir, exist_ok=True)
 
+    # filedb.json 与归档文件保存在一起（而非 EXE 目录），实现数据跨版本共享
+    db_path = os.path.join(archive_dir, ".filedb.json")
+    # 兼容旧版：如果旧位置有 filedb.json，迁移过来
+    old_db = os.path.join(SCRIPT_DIR, "filedb.json")
+    if os.path.exists(old_db) and not os.path.exists(db_path):
+        try:
+            import shutil
+            shutil.copy2(old_db, db_path)
+            log(f"[migrate] filedb.json 已从 {old_db} 迁移到 {db_path}")
+        except Exception as e:
+            log(f"[migrate] 迁移失败: {e}")
+
     # 启动时扫描归档目录，与 filedb.json 比对，缺失的文件自动补录
-    db = FileDB(DB_FILE)
+    db = FileDB(db_path)
     if os.path.isdir(archive_dir):
         # 统计归档目录实际文件（排除 index.html 和 .filedb.json）
         real_files = set()
@@ -914,16 +924,16 @@ def main():
         if missing or extra:
             log(f"[scan] 归档目录变化: {len(missing)} 新增, {len(extra)} 已删除")
             # 重建 filedb
-            new_data = rebuild_filedb(DB_FILE, archive_dir)
+            new_data = rebuild_filedb(db_path, archive_dir)
             db.data = new_data
             log(f"[scan] filedb 重建完成: {len(new_data)} 条记录")
         else:
             log(f"[scan] filedb 与目录一致 ({len(real_files)} 文件)")
 
     register_lingxi_protocol()
-    generate_html_index(db, archive_dir, config)
+    generate_html_index(db, archive_dir, config, db_path)
     log(f"  归档目录: {config['archive_dir']}")
-    log(f"  导航页面: {HTML_INDEX}")
+    log(f"  导航页面: {os.path.join(archive_dir, 'index.html')}")
     log("")
     try:
         app = MeowDesk(config, db)
