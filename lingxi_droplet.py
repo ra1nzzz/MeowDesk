@@ -823,7 +823,13 @@ def generate_html_index(db, archive_dir, config):
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             # 加载后覆盖路径配置（模块级代码已设置默认值）
-            mod.DB_FILE = os.path.join(SCRIPT_DIR, "filedb.json")
+            # 优先用用户数据目录，首次运行则从内置资源目录回退
+            db_path = os.path.join(SCRIPT_DIR, "filedb.json")
+            if not os.path.exists(db_path):
+                bundled = os.path.join(BUNDLE_DIR, "filedb.json")
+                if os.path.exists(bundled):
+                    db_path = bundled
+            mod.DB_FILE = db_path
             mod.ARCHIVE_DIR = archive_dir
             mod.ARCHIVE_URL = archive_dir.replace("\\", "/")
             mod.SCRIPT_DIR = BUNDLE_DIR
