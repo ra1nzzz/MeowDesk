@@ -48,8 +48,8 @@ python install.py uninstall  # 卸载
 ## 目录结构
 
 ```
-D:\mewo-temp\           ← 拖入文件的临时暂存目录
-D:\mewo-file\           ← 归档根目录
+D:\meow-temp\           ← 拖入文件的临时暂存目录
+D:\meow-file\           ← 归档根目录
   ├── index.html        ← HTML 导航页面
   ├── .filedb.json      ← 文件数据库（自动维护）
   ├── 截图\             ← 自动回收（移入回收站）
@@ -79,8 +79,8 @@ D:\mewo-file\           ← 归档根目录
 
 ```json
 {
-  "temp_dir": "D:\\mewo-temp",
-  "archive_dir": "D:\\mewo-file",
+  "temp_dir": "D:\\meow-temp",
+  "archive_dir": "D:\\meow-file",
   "window_opacity": 0.85,
   "auto_open_html": false,
   "categories": {

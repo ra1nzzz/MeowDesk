@@ -158,7 +158,7 @@ def uninstall():
         print("  (不存在)")
 
     # 提示是否删除数据目录
-    data_dirs = [r"D:\mewo-temp", r"D:\mewo-file"]
+    data_dirs = [r"D:\meow-temp", r"D:\meow-file"]
     existing = [d for d in data_dirs if os.path.exists(d)]
     if existing:
         print(f"\n  以下数据目录仍保留（归档文件不受影响）:")
@@ -203,7 +203,7 @@ def status():
     print(f"  桌面快捷方式: {'存在' if os.path.exists(desktop_link) else '不存在'}")
 
     # 检查数据目录
-    for label, d in [("临时目录", r"D:\mewo-temp"), ("归档目录", r"D:\mewo-file")]:
+    for label, d in [("临时目录", r"D:\meow-temp"), ("归档目录", r"D:\meow-file")]:
         exists = os.path.exists(d)
         size = 0
         count = 0

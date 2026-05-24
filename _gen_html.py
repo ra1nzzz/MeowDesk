@@ -9,8 +9,8 @@ import base64, os, json, re, hashlib, datetime
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(SCRIPT_DIR, "filedb.json")
-ARCHIVE_DIR = r"D:\mewo-file"
-ARCHIVE_URL = "D:/mewo-file"
+ARCHIVE_DIR = r"D:\meow-file"
+ARCHIVE_URL = "D:/meow-file"
 PAGE_SIZE = 200
 
 SCREENSHOT_RE = re.compile(
@@ -122,7 +122,7 @@ def main():
         locate = ""
         if dest and dest != "(已回收)" and action == "archive":
             enc = base64.b64encode(dest.encode("utf-8")).decode("ascii")
-            locate = ' <a class="btn-locate" href="mewo-locate://' + enc + '">定位</a>'
+            locate = ' <a class="btn-locate" href="meow-locate://' + enc + '">定位</a>'
         rows.append(
             '<tr>'
             '<td data-cat="' + cat + '"><span class="cat-dot" style="background:' + color + '"></span> ' + emoji + ' ' + cat + '</td>'

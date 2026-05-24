@@ -33,13 +33,13 @@ def log(msg):
     line = f"[{ts}] {msg}"
     print(line)
     try:
-        with open(os.path.join(LOG_DIR, "mewo_desk.log"), "a", encoding="utf-8") as f:
+        with open(os.path.join(LOG_DIR, "meow_desk.log"), "a", encoding="utf-8") as f:
             f.write(line + "\n")
     except Exception:
         pass
 
 ASSETS_DIR = os.path.join(BUNDLE_DIR, "assets")
-HTML_INDEX = r"D:\mewo-file\index.html"
+HTML_INDEX = r"D:\meow-file\index.html"
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "config.json")
 # DB_FILE 将在 main() 中根据 archive_dir 动态确定
 
@@ -725,7 +725,7 @@ def rebuild_filedb(db_path, archive_dir):
                 cat = _EXT_CAT.get(ext, "其他")
                 if cat == "图片" and _SCREENSHOT_RE.search(name_lower):
                     cat = "截图"
-                # 从路径推断分类目录（如 D:\lingxi-file\图片\2026-05\xxx.png）
+                # 从路径推断分类目录（如 D:\meow-file\图片\2026-05\xxx.png）
                 rel = os.path.relpath(fpath, archive_dir)
                 parts = rel.replace("/", "\\").split("\\")
                 if len(parts) >= 2 and parts[0] in (set(_EXT_CAT.values()) | {"截图"}):
@@ -793,7 +793,7 @@ def register_lingxi_protocol():
         if not os.path.exists(loc_py):
             with open(loc_py, "w", encoding="utf-8") as _f:
                 _f.write("import base64,subprocess,sys\n")
-                _f.write("u=sys.argv[1].replace(b'mewo-locate://',b'')\n")
+                _f.write("u=sys.argv[1].replace(b'meow-locate://',b'')\n")
                 _f.write("p=base64.b64decode(u).decode('utf-8')\n")
                 _f.write("subprocess.Popen(['explorer','/select,',p])\n")
         if not os.path.exists(bat):
@@ -809,8 +809,8 @@ def register_lingxi_protocol():
                     _f.write('set PYTHONHOME=\n')
                     _f.write('set PYTHONPATH=\n')
                     _f.write('"C:\\Program Files\\Python312\\python.exe" "%~dp0_locate.py" "%~1"\n')
-        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\mewo-locate")
-        winreg.SetValue(key, None, winreg.REG_SZ, "URL:mewo-locate Protocol")
+        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\meow-locate")
+        winreg.SetValue(key, None, winreg.REG_SZ, "URL:meow-locate Protocol")
         winreg.SetValueEx(key, "URL Protocol", 0, winreg.REG_SZ, "")
         shell = winreg.CreateKey(key, r"shell\open\command")
         winreg.SetValue(shell, None, winreg.REG_SZ, f'"{bat}" "%1"')
@@ -841,7 +841,7 @@ def generate_html_index(db, archive_dir, config, db_path=None):
     return "<html><body><p>HTML generation failed</p></body></html>"
 
 def load_config():
-    default = {"archive_dir": r"D:\mewo-file", "temp_dir": r"D:\mewo-temp", "window_position": None}
+    default = {"archive_dir": r"D:\meow-file", "temp_dir": r"D:\meow-temp", "window_position": None}
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -878,10 +878,10 @@ class FileDB:
 def main():
     import traceback
 
-    # --locate 模式：用于 mewo-locate:// 协议定位文件
+    # --locate 模式：用于 meow-locate:// 协议定位文件
     if len(sys.argv) > 1 and sys.argv[1] == "--locate":
         import base64, subprocess
-        u = sys.argv[2].replace("mewo-locate://", "")
+        u = sys.argv[2].replace("meow-locate://", "")
         p = base64.b64decode(u).decode("utf-8")
         subprocess.Popen(["explorer", "/select,", p])
         return
@@ -893,8 +893,8 @@ def main():
     archive_dir = config["archive_dir"]
     os.makedirs(archive_dir, exist_ok=True)
 
-    # 自动检测：如果配置的归档目录为空，但旧版默认目录（lingxi-file）有文件，自动切换
-    old_default = r"D:\lingxi-file"
+    # 自动检测：如果配置的归档目录为空，但旧版默认目录有文件，自动切换
+    old_default = r"D:\meow-file"
     if archive_dir != old_default and os.path.isdir(old_default):
         has_files = any(
             f not in ("index.html", ".filedb.json")

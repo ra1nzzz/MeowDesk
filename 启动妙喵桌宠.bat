@@ -27,7 +27,7 @@ if exist "%~dp0lingxi_droplet_tk.py" (
 
 if %errorlevel% neq 0 (
     echo.
-    echo  [启动失败] 请查看 logs\mewo_desk.log
+    echo  [启动失败] 请查看 logs\meow_desk.log
     echo.
     pause
 )
