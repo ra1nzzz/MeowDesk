@@ -893,6 +893,24 @@ def main():
     archive_dir = config["archive_dir"]
     os.makedirs(archive_dir, exist_ok=True)
 
+    # 自动检测：如果配置的归档目录为空，但旧版默认目录（lingxi-file）有文件，自动切换
+    old_default = r"D:\lingxi-file"
+    if archive_dir != old_default and os.path.isdir(old_default):
+        has_files = any(
+            f not in ("index.html", ".filedb.json")
+            for _, _, fs in os.walk(old_default) for f in fs
+        )
+        if has_files:
+            new_empty = not any(
+                f not in ("index.html", ".filedb.json")
+                for _, _, fs in os.walk(archive_dir) for f in fs
+            ) if os.path.isdir(archive_dir) else True
+            if new_empty:
+                log(f"[migrate] 切换归档目录: {archive_dir} → {old_default}")
+                archive_dir = old_default
+                config["archive_dir"] = old_default
+                save_config(config)
+
     # filedb.json 与归档文件保存在一起（而非 EXE 目录），实现数据跨版本共享
     db_path = os.path.join(archive_dir, ".filedb.json")
     # 兼容旧版：如果旧位置有 filedb.json，迁移过来
