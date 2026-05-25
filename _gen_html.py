@@ -198,7 +198,7 @@ def main():
         '<button class="btn" onclick="showMore()">加载更多</button>'
         '</div>\n'
         '<div class="footer">妙喵桌宠 MeowDesk · 共' + str(len(records)) + '个文件 · 数据存储于本地 ' + ARCHIVE_DIR + '</div>\n' + '        <div class="footer" style="margin-top:4px;font-size:12px;color:#64748b">'
-        '        <a href="https://github.com/ra1nzzz/desktopet" target="_blank">GitHub 仓库</a>'
+        '        <a href="https://github.com/ra1nzzz/MeowDesk" target="_blank">GitHub 仓库</a>'
         '        · 问题反馈 · 欢迎 Star ✨</div>\n'
         '</div>\n'
         '<script>\n'
