@@ -268,7 +268,7 @@ class MeowDesk(tk.Tk):
         self._cur_w = 0
         self._cur_h = 0
 
-        self.loader = ApngLoader(scale=0.5)
+        self.loader = ApngLoader(scale=config.get("scale", 0.5))
         self._ulw = ULWRenderer()
         self._preload_assets()
         self._setup_window()
@@ -418,6 +418,7 @@ class MeowDesk(tk.Tk):
         menu.add_command(label="打开文件导航", command=self._open_html)
         menu.add_command(label="打开归档目录", command=lambda: os.startfile(self.archive_dir))
         menu.add_separator()
+        menu.add_command(label="设置", command=self._open_settings)
         menu.add_command(label="退出", command=self._quit)
         menu.tk_popup(e.x_root, e.y_root)
 
@@ -431,6 +432,133 @@ class MeowDesk(tk.Tk):
         else:
             self._update_html()
             webbrowser.open(idx)
+
+    def _open_settings(self):
+        win = tk.Toplevel(self)
+        win.title("设置")
+        win.configure(bg="#1a1d27")
+        win.resizable(False, False)
+        # Center on screen
+        win.update_idletasks()
+        sw = self.winfo_screenwidth(); sh = self.winfo_screenheight()
+        ww, wh = 480, 380
+        win.geometry(f"{ww}x{wh}+{(sw-ww)//2}+{(sh-wh)//2}")
+        win.attributes("-topmost", True)
+
+        fg = "#e2e8f0"; bg = "#1a1d27"; entry_bg = "#242837"; accent = "#6366f1"
+        row = 0
+
+        # --- 归档目录 ---
+        tk.Label(win, text="归档目录", bg=bg, fg=fg, anchor="w",
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=row, column=0, sticky="w", padx=20, pady=(20, 4))
+        row += 1
+        dir_var = tk.StringVar(value=self.archive_dir)
+        dir_entry = tk.Entry(win, textvariable=dir_var, bg=entry_bg, fg=fg,
+                             insertbackground=fg, relief="flat", font=("Microsoft YaHei", 10))
+        dir_entry.grid(row=row, column=0, sticky="ew", padx=20, pady=(0, 4))
+        def _browse_dir():
+            from tkinter import filedialog
+            d = filedialog.askdirectory(title="选择归档目录", initialdir=dir_var.get())
+            if d:
+                dir_var.set(d)
+        tk.Button(win, text="浏览…", command=_browse_dir, bg=accent, fg="#fff",
+                  relief="flat", cursor="hand2", padx=12).grid(row=row, column=1, padx=(0, 20), pady=(0, 4))
+        row += 1
+
+        # --- 宠物大小 ---
+        tk.Label(win, text="宠物大小", bg=bg, fg=fg, anchor="w",
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=row, column=0, sticky="w", padx=20, pady=(12, 4))
+        row += 1
+        scale_var = tk.DoubleVar(value=self.cfg.get("scale", 0.5))
+        def _fmt_scale(v):
+            return f"{int(float(v)*100)}%"
+        scale_slider = tk.Scale(win, from_=0.3, to=1.0, resolution=0.05,
+                                orient="horizontal", variable=scale_var,
+                                bg=bg, fg=fg, troughcolor=entry_bg, highlightthickness=0,
+                                label="", showvalue=False, length=280)
+        scale_slider.grid(row=row, column=0, sticky="w", padx=20, pady=(0, 4))
+        scale_label = tk.Label(win, text=_fmt_scale(scale_var.get()), bg=bg, fg=accent,
+                               font=("Microsoft YaHei", 10, "bold"))
+        scale_label.grid(row=row, column=1, padx=(0, 20))
+        def _on_scale(v):
+            scale_label.config(text=_fmt_scale(v))
+        scale_slider.config(command=_on_scale)
+        row += 1
+
+        # --- 截图处理 ---
+        tk.Label(win, text="截图处理", bg=bg, fg=fg, anchor="w",
+                 font=("Microsoft YaHei", 10, "bold")).grid(row=row, column=0, sticky="w", padx=20, pady=(12, 4))
+        row += 1
+        ss_var = tk.StringVar(value=self.cfg.get("screenshot_action", "recycle"))
+        ss_frame = tk.Frame(win, bg=bg)
+        ss_frame.grid(row=row, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4))
+        tk.Radiobutton(ss_frame, text="移入回收站", variable=ss_var, value="recycle",
+                       bg=bg, fg=fg, selectcolor=bg, activebackground=bg,
+                       activeforeground=fg, font=("Microsoft YaHei", 10)).pack(side="left", padx=(0, 20))
+        tk.Radiobutton(ss_frame, text="保留到图片", variable=ss_var, value="archive",
+                       bg=bg, fg=fg, selectcolor=bg, activebackground=bg,
+                       activeforeground=fg, font=("Microsoft YaHei", 10)).pack(side="left")
+        row += 1
+
+        # --- 按钮 ---
+        btn_frame = tk.Frame(win, bg=bg)
+        btn_frame.grid(row=row, column=0, columnspan=2, pady=(24, 16))
+        def _save():
+            new_dir = dir_var.get().strip()
+            old_dir = self.archive_dir
+            new_scale = round(scale_var.get(), 2)
+            new_ss = ss_var.get()
+
+            # 目录变更处理
+            if new_dir != old_dir:
+                move_files = tk.messagebox.askyesno(
+                    "移动文件",
+                    f"归档目录已更改：\n{old_dir} → {new_dir}\n\n"
+                    f"是否将旧目录中的文件移动到新目录？\n"
+                    "（选「否」则只切换目录，旧文件保留不动）",
+                    parent=win)
+                if move_files:
+                    self._move_archive_dir(old_dir, new_dir)
+                else:
+                    os.makedirs(new_dir, exist_ok=True)
+                    # 更新 db 中所有 archive 记录的路径前缀
+                    for r in self.db.data:
+                        if r.get("action") == "archive" and r.get("destination", "").startswith(old_dir):
+                            r["destination"] = r["destination"].replace(old_dir, new_dir, 1)
+                    self.db._save()
+
+            self.archive_dir = new_dir
+            self.temp_dir = self.cfg.get("temp_dir", r"D:\meow-temp")
+
+            # 截图处理变更
+            self.cfg["screenshot_action"] = new_ss
+
+            # 宠物大小变更 → 重载资源
+            old_scale = self.cfg.get("scale", 0.5)
+            if abs(new_scale - old_scale) > 0.01:
+                self.cfg["scale"] = new_scale
+                self.loader = ApngLoader(scale=new_scale)
+                self._preload_assets()
+                # 更新窗口大小
+                frames = self.loader.get_frames(self.state)
+                if frames:
+                    self._cur_w = frames[0].width
+                    self._cur_h = frames[0].height
+                    self.geometry(f"{self._cur_w}x{self._cur_h}")
+
+            self.cfg["archive_dir"] = new_dir
+            save_config(self.cfg)
+            self._update_html()
+            win.destroy()
+
+        tk.Button(btn_frame, text="保存", command=_save, bg=accent, fg="#fff",
+                  relief="flat", cursor="hand2", padx=28, pady=4,
+                  font=("Microsoft YaHei", 10, "bold")).pack(side="left", padx=8)
+        tk.Button(btn_frame, text="取消", command=win.destroy, bg="#374151", fg=fg,
+                  relief="flat", cursor="hand2", padx=20, pady=4,
+                  font=("Microsoft YaHei", 10)).pack(side="left", padx=8)
+
+        win.grid_columnconfigure(0, weight=1)
 
     def _quit(self):
         log("退出")
@@ -654,6 +782,25 @@ class MeowDesk(tk.Tk):
             log(f"  [归档] {name} → {cat}/")
             return "archive"
 
+    def _move_archive_dir(self, old_dir, new_dir):
+        """将文件从旧归档目录迁移到新目录，更新 db 记录"""
+        os.makedirs(new_dir, exist_ok=True)
+        moved = 0
+        for r in self.db.data:
+            if r.get("action") == "archive" and r.get("destination", "").startswith(old_dir):
+                src = r["destination"]
+                rel = os.path.relpath(src, old_dir)
+                dst = os.path.join(new_dir, rel)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                try:
+                    shutil.move(src, dst)
+                    r["destination"] = dst
+                    moved += 1
+                except Exception as e:
+                    log(f"[migrate] 移动失败: {src} → {dst}: {e}")
+        self.db._save()
+        log(f"[migrate] 已移动 {moved} 个文件: {old_dir} → {new_dir}")
+
     def _update_html(self):
         try:
             html = generate_html_index(self.db, self.archive_dir, self.cfg)
@@ -775,7 +922,8 @@ def classify_file(filepath, config):
     name = os.path.basename(filepath).lower()
     if ext in (".png", ".jpg", ".jpeg", ".bmp", ".webp", ".gif", ".tiff", ".tif", ".svg", ".ico"):
         if SCREENSHOT_RE.search(name):
-            return "截图", "recycle"
+            action = config.get("screenshot_action", "recycle")
+            return "截图", action
         return "图片", "archive"
     if ext in (".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv"):
         return "视频", "archive"
@@ -853,7 +1001,7 @@ def generate_html_index(db, archive_dir, config, db_path=None):
     return "<html><body><p>HTML generation failed</p></body></html>"
 
 def load_config():
-    default = {"archive_dir": r"D:\meow-file", "temp_dir": r"D:\meow-temp", "window_position": None}
+    default = {"archive_dir": r"D:\meow-file", "temp_dir": r"D:\meow-temp", "window_position": None, "scale": 0.5, "screenshot_action": "recycle"}
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
