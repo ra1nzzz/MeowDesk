@@ -123,6 +123,17 @@ pyinstaller 妙喵桌宠.spec
 
 输出在 `dist/妙喵桌宠/` 目录。
 
+## 赞赏支持
+
+如果觉得好用，欢迎请作者喝杯咖啡 ☕
+
+<p align="left">
+  <img src="assets/sponsor-wechat.jpg" width="200" alt="微信赞赏" style="margin-right:20px">
+  <img src="assets/sponsor-alipay.jpg" width="200" alt="支付宝赞赏">
+</p>
+
+---
+
 ## 许可证
 
 [非商业免费使用许可证](LICENSE) — 个人和非商业组织免费使用，商业使用需授权。
