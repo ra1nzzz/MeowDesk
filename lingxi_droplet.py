@@ -554,15 +554,27 @@ class MeowDesk(tk.Tk):
                         if os.path.isfile(fp):
                             items.append(fp)
         if items:
-            self.state = SURPRISED
-            self._surprised_timer = 10
-            self._apng_frame_index = 0
-            self._show_bubble(f"收到 {len(items)} 个文件", 40)
-            self.after(800, lambda: self._process(items, folders_to_remove))
+            count = len(items)
+            # ≥10 个文件：SURPRISED 后进入 RECEIVING，整个处理过程保持 receiving 动画
+            if count >= 10:
+                self.state = SURPRISED
+                self._surprised_timer = 10
+                self._apng_frame_index = 0
+                self._show_bubble(f"收到 {count} 个文件，正在处理…", 120)
+                self.after(800, lambda: self._process(items, folders_to_remove, big_batch=True))
+            else:
+                self.state = SURPRISED
+                self._surprised_timer = 10
+                self._apng_frame_index = 0
+                self._show_bubble(f"收到 {count} 个文件", 40)
+                self.after(800, lambda: self._process(items, folders_to_remove))
 
-    def _process(self, paths, folders_to_remove=None):
+    def _process(self, paths, folders_to_remove=None, big_batch=False):
         self._processing = True
-        self.state = CARRYING
+        if big_batch:
+            self.state = RECEIVING
+        else:
+            self.state = CARRYING
         self._apng_frame_index = 0
         recycled = archived = duplicated = 0
         for p in paths:
