@@ -19,39 +19,58 @@ jobs:
           python-version: '3.12'
 
       - name: 安装依赖
+        shell: pwsh
         run: |
           pip install --upgrade pip
           pip install pyinstaller pillow send2trash windnd
 
-      - name: 构建单文件版（standalone）
+      - name: 构建单文件版（standalone .exe）
+        shell: pwsh
         run: |
-          pyinstaller --noconfirm --onefile --name MeowDesk --distpath . --workpath build\onefile --specpath build\onefile --add-data "assets;assets" --add-data "_gen_html.py;." --add-data "_locate.py;." --add-data "config.json;." --add-data "filedb.json;." --add-data "index_preview.html;." --add-data "README.md;." --icon "assets/icon.ico" --windowed lingxi_droplet.py
-          echo "=== 单文件版大小 ==="
-          dir MeowDesk.exe
-
-      - name: 重命名单文件版
-        shell: powershell
-        run: |
-          Move-Item -Path MeowDesk.exe -Destination MeowDesk-standalone.exe -Force
-          dir MeowDesk-standalone.exe
+          pyinstaller --noconfirm 妙喵桌宠-onefile.spec
+          echo "=== 检查构建产物 ==="
+          if (Test-Path "dist/妙喵桌宠.exe") {
+            $size = (Get-Item "dist/妙喵桌宠.exe").Length
+            echo "单文件 EXE 构建成功: $size bytes"
+            Copy-Item "dist/妙喵桌宠.exe" -Destination "MeowDesk-standalone.exe"
+            echo "已复制到工作目录"
+          } else {
+            echo "ERROR: 单文件 EXE 构建产物不存在！"
+            exit 1
+          }
 
       - name: 构建完整版（文件夹）
+        shell: pwsh
         run: |
           pyinstaller --noconfirm 妙喵桌宠.spec
+          echo "=== 检查构建产物 ==="
+          if (Test-Path "dist/妙喵桌宠/妙喵桌宠.exe") {
+            echo "完整版构建成功"
+          } else {
+            echo "ERROR: 完整版构建产物不存在！"
+            exit 1
+          }
 
       - name: 打包完整版为 ZIP
-        shell: powershell
+        shell: pwsh
         run: |
-          Compress-Archive -Path dist/妙喵桌宠/* -DestinationPath MeowDesk.zip
-          dir MeowDesk.zip
+          Compress-Archive -Path "dist/妙喵桌宠/*" -DestinationPath "MeowDesk.zip"
+          echo "ZIP 包大小: $((Get-Item MeowDesk.zip).Length) bytes"
 
-      - name: 列出构建产物
-        shell: powershell
+      - name: 验证所有构建产物
+        shell: pwsh
         run: |
-          echo "=== 工作目录文件 ==="
-          dir *.exe, *.zip
-          echo "=== dist 目录 ==="
-          dir dist/ -Recurse | Select-Object Length, FullName
+          echo "=== 构建产物清单 ==="
+          Get-ChildItem -Path "." -Include "MeowDesk*" -Name
+          $files = @("MeowDesk.zip", "MeowDesk-standalone.exe")
+          foreach ($f in $files) {
+            if (Test-Path $f) {
+              echo "✅ $f - $((Get-Item $f).Length) bytes"
+            } else {
+              echo "❌ $f - 缺失！"
+              exit 1
+            }
+          }
 
       - name: 创建 Release 并上传
         uses: softprops/action-gh-release@v2
@@ -63,12 +82,10 @@ jobs:
             ## 下载选项
 
             ### 🗜️ MeowDesk.zip（完整版，推荐）
-            解压到任意目录，双击 `妙喵桌宠.exe` 启动。
-            启动稍快，文件结构清晰。
+            解压到任意目录，双击 `妙喵桌宠.exe` 启动。启动稍快。
 
             ### ⚡ MeowDesk-standalone.exe（单文件版）
-            单个 exe 文件，无需解压，即下即用。
-            首次启动稍慢（自解压），适合便携使用。
+            单个 exe 文件，无需解压，即下即用。适合便携使用。
 
             **注意**：Windows 可能提示"Windows 已保护你的电脑"，点击"更多信息"→"仍要运行"即可。
           files: |
