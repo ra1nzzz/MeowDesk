@@ -37,7 +37,7 @@ jobs:
 
       - name: 重命名单文件 EXE
         run: |
-          copy "dist/妙喵桌宠/妙喵桌宠.exe" "MeowDesk-standalone.exe"
+          copy "dist/妙喵桌宠.exe" "MeowDesk-standalone.exe"
 
       - name: 创建 Release 并上传
         uses: softprops/action-gh-release@v2
