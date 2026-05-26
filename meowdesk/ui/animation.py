@@ -56,8 +56,9 @@ class AnimationManager:
             durations = []
             
             # 提取所有帧
-            try:
-                while True:
+            frame_index = 0
+            while True:
+                try:
                     # 复制当前帧
                     frame = img.copy().convert('RGBA')
                     
@@ -69,6 +70,10 @@ class AnimationManager:
                         )
                         frame = frame.resize(new_size, Image.Resampling.LANCZOS)
                     
+                    # 预乘 alpha：消除 ULW (AC_SRC_ALPHA) 下的白色边缘锯齿
+                    # 必须在 resize 之后做，否则插值会破坏预乘关系
+                    frame = self._premultiply_alpha(frame)
+                    
                     frames.append(frame)
                     
                     # 获取帧延迟（毫秒）
@@ -76,19 +81,39 @@ class AnimationManager:
                     durations.append(duration)
                     
                     # 移动到下一帧
-                    img.seek(img.tell() + 1)
+                    frame_index += 1
+                    img.seek(frame_index)
                     
-            except EOFError:
-                pass  # 到达最后一帧
+                except EOFError:
+                    break  # 到达最后一帧
+                except Exception as e:
+                    print(f"加载帧 {frame_index} 失败: {e}")
+                    break
             
-            self.frames_cache[state] = frames
-            self.durations_cache[state] = durations
+            if frames:
+                self.frames_cache[state] = frames
+                self.durations_cache[state] = durations
+            else:
+                raise ValueError("没有加载到任何帧")
             
         except Exception as e:
             print(f"加载动画失败 {filepath}: {e}")
             # 创建默认帧
             self.frames_cache[state] = [self._create_default_frame()]
             self.durations_cache[state] = [100]
+    
+    @staticmethod
+    def _premultiply_alpha(image: Image.Image) -> Image.Image:
+        """预乘 alpha 通道，消除 ULW 渲染时的白色边缘"""
+        from PIL import ImageMath
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        
+        r, g, b, a = image.split()
+        r = ImageMath.unsafe_eval('convert(R * A / 255, "I")', R=r, A=a).convert('L')
+        g = ImageMath.unsafe_eval('convert(G * A / 255, "I")', G=g, A=a).convert('L')
+        b = ImageMath.unsafe_eval('convert(B * A / 255, "I")', B=b, A=a).convert('L')
+        return Image.merge("RGBA", (r, g, b, a))
     
     def _create_default_frame(self) -> Image.Image:
         """创建默认帧（纯色方块）"""
