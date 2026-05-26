@@ -4,7 +4,10 @@
   "window_opacity": 0.85,
   "auto_open_html": false,
   "screenshot_action": "recycle",
-  "window_position": null,
+  "window_position": [
+    1763,
+    417
+  ],
   "categories": {
     "截图": {
       "exts": [
