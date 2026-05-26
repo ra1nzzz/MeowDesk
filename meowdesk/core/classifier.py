@@ -4,6 +4,7 @@
 
 import os
 import re
+import sys
 from typing import Tuple, Dict, Any
 from PIL import Image
 
@@ -95,24 +96,31 @@ class FileClassifier:
         return False
     
     def _check_screenshot_resolution(self, filepath: str) -> bool:
-        """检查图片分辨率是否接近屏幕分辨率"""
         try:
-            import ctypes
-            
-            # 获取屏幕分辨率
-            user32 = ctypes.windll.user32
-            screen_w = user32.GetSystemMetrics(0)
-            screen_h = user32.GetSystemMetrics(1)
-            
-            # 获取图片分辨率
+            screen_w, screen_h = 0, 0
+
+            if sys.platform == 'darwin':
+                import AppKit
+                size = AppKit.NSScreen.mainScreen().frame().size
+                screen_w, screen_h = int(size.width), int(size.height)
+            elif sys.platform == 'win32':
+                import ctypes
+                user32 = ctypes.windll.user32
+                screen_w = user32.GetSystemMetrics(0)
+                screen_h = user32.GetSystemMetrics(1)
+            else:
+                return False
+
+            if screen_w <= 0 or screen_h <= 0:
+                return False
+
             with Image.open(filepath) as img:
                 img_w, img_h = img.size
-            
-            # 判断：宽度 >= 屏幕80% 且 高度 >= 屏幕50%
+
             if img_w >= screen_w * 0.8 and img_h >= screen_h * 0.5:
                 return True
-            
+
         except Exception:
             pass
-        
+
         return False
