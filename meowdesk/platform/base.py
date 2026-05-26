@@ -18,6 +18,10 @@ class PlatformWindow(ABC):
         self.on_drop_callback: Optional[Callable] = None
         self.on_click_callback: Optional[Callable] = None
         self.on_right_click_callback: Optional[Callable] = None
+        self.on_mouse_enter_callback: Optional[Callable] = None
+        self.on_mouse_exit_callback: Optional[Callable] = None
+        self.on_drag_start_callback: Optional[Callable] = None
+        self.on_drag_end_callback: Optional[Callable] = None
     
     @abstractmethod
     def create(self):
@@ -70,6 +74,22 @@ class PlatformWindow(ABC):
     def on_right_click(self, callback: Callable):
         """设置右键回调"""
         self.on_right_click_callback = callback
+
+    def on_mouse_enter(self, callback: Callable):
+        """设置鼠标进入回调"""
+        self.on_mouse_enter_callback = callback
+
+    def on_mouse_exit(self, callback: Callable):
+        """设置鼠标离开回调"""
+        self.on_mouse_exit_callback = callback
+
+    def on_drag_start(self, callback: Callable):
+        """设置拖拽开始回调"""
+        self.on_drag_start_callback = callback
+
+    def on_drag_end(self, callback: Callable):
+        """设置拖拽结束回调"""
+        self.on_drag_end_callback = callback
     
     @abstractmethod
     def run(self):

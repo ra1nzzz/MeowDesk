@@ -71,22 +71,33 @@ class MeowWindow:
         self.on_quit_callback: Optional[Callable] = None
 
     def create(self):
+        idle_w, idle_h = self.animation.get_frame_size(AnimationManager.IDLE)
+
         if sys.platform == 'win32':
             from ..platform.windows import WindowsWindow
-            self.platform_window = WindowsWindow(128, 128)
+            self.platform_window = WindowsWindow(idle_w, idle_h)
         elif sys.platform == 'darwin':
             from ..platform.macos import MacOSWindow
-            self.platform_window = MacOSWindow(128, 128)
+            self.platform_window = MacOSWindow(idle_w, idle_h)
         else:
             raise NotImplementedError(f"不支持的平台: {sys.platform}")
 
         self.platform_window.create()
 
-        self.window_width, self.window_height = self.animation.get_frame_size(AnimationManager.IDLE)
+        self.window_width, self.window_height = idle_w, idle_h
 
         self.platform_window.on_drop(self._on_files_dropped)
         self.platform_window.on_click(self._on_click)
         self.platform_window.on_right_click(self._on_right_click)
+
+        if hasattr(self.platform_window, 'on_mouse_enter'):
+            self.platform_window.on_mouse_enter(self._on_mouse_enter)
+        if hasattr(self.platform_window, 'on_mouse_exit'):
+            self.platform_window.on_mouse_exit(self._on_mouse_exit)
+        if hasattr(self.platform_window, 'on_drag_start'):
+            self.platform_window.on_drag_start(self._on_drag_start)
+        if hasattr(self.platform_window, 'on_drag_end'):
+            self.platform_window.on_drag_end(self._on_drag_end)
 
         self._move_to_saved_position()
 
@@ -323,6 +334,10 @@ class MeowWindow:
     def _on_click(self):
         self._touch()
 
+        if self.state == AnimationManager.SLEEPING:
+            self.state = AnimationManager.IDLE
+            self.frame_index = 0
+
         now = time.time()
         self.click_times.append(now)
         self.click_times = [t for t in self.click_times if now - t < 0.8]
@@ -333,6 +348,32 @@ class MeowWindow:
                 self.shy_timer = 60
                 self.frame_index = 0
                 self.click_times.clear()
+
+    def _on_mouse_enter(self):
+        self._touch()
+
+        if self.state == AnimationManager.SLEEPING:
+            self.state = AnimationManager.IDLE
+            self.frame_index = 0
+
+    def _on_mouse_exit(self):
+        pass
+
+    def _on_drag_start(self):
+        self.dragging = True
+        self._touch()
+
+        if self.state not in (AnimationManager.RECEIVING, AnimationManager.CARRYING):
+            self.state = AnimationManager.SHY
+            self.shy_timer = 40
+            self.frame_index = 0
+
+    def _on_drag_end(self):
+        self.dragging = False
+        self._touch()
+
+        if self.state == AnimationManager.SHY and self.shy_timer == 0:
+            self.shy_timer = 40
 
     def _on_right_click(self):
         if not self.platform_window:
@@ -347,8 +388,6 @@ class MeowWindow:
                 self.context_menu.show(x, y)
 
     def _show_macos_context_menu(self):
-        from ..platform.macos import show_context_menu
-
         menu_items = [
             ("📄 打开导航页", self._open_html),
             ("📁 打开归档目录", self._open_archive_dir),
@@ -364,9 +403,7 @@ class MeowWindow:
             ("❌ 退出", self.quit),
         ]
 
-        self._menu_handlers = show_context_menu(
-            self.platform_window.view, menu_items
-        )
+        self.platform_window.show_context_menu(menu_items)
 
     def _open_html(self):
         archive_dir = self.config.get('archive_dir')
