@@ -3,6 +3,7 @@
 """
 
 import os
+import sys
 import shutil
 import subprocess
 from typing import Dict, Any, Callable, List
@@ -51,12 +52,23 @@ class CommandRegistry:
         # 磁盘清理
         @self.register_command('clean_disk')
         def clean_disk(params):
-            """清理磁盘临时文件"""
-            temp_dirs = [
-                os.environ.get('TEMP'),
-                os.environ.get('TMP'),
-                os.path.expanduser('~\\AppData\\Local\\Temp')
-            ]
+            if sys.platform == 'darwin':
+                temp_dirs = [
+                    '/tmp',
+                    os.path.expanduser('~/Library/Caches'),
+                    os.path.expanduser('~/Library/Logs'),
+                ]
+            elif sys.platform == 'win32':
+                temp_dirs = [
+                    os.environ.get('TEMP'),
+                    os.environ.get('TMP'),
+                    os.path.expanduser('~\\AppData\\Local\\Temp')
+                ]
+            else:
+                temp_dirs = [
+                    '/tmp',
+                    os.environ.get('TMPDIR'),
+                ]
             
             cleaned_size = 0
             cleaned_files = 0
@@ -203,41 +215,72 @@ class CommandRegistry:
         # 系统信息
         @self.register_command('system_info')
         def system_info(params):
-            """获取系统信息"""
             import platform
-            import psutil
-            
-            disk = psutil.disk_usage('/')
-            memory = psutil.virtual_memory()
-            
-            return {
-                'os': platform.system(),
-                'os_version': platform.version(),
-                'cpu_count': psutil.cpu_count(),
-                'cpu_percent': psutil.cpu_percent(interval=1),
-                'memory_total_gb': round(memory.total / 1024 / 1024 / 1024, 2),
-                'memory_used_gb': round(memory.used / 1024 / 1024 / 1024, 2),
-                'memory_percent': memory.percent,
-                'disk_total_gb': round(disk.total / 1024 / 1024 / 1024, 2),
-                'disk_used_gb': round(disk.used / 1024 / 1024 / 1024, 2),
-                'disk_percent': disk.percent
-            }
+
+            try:
+                import psutil
+                has_psutil = True
+            except ImportError:
+                has_psutil = False
+
+            if has_psutil:
+                if sys.platform == 'darwin':
+                    disk = psutil.disk_usage('/')
+                else:
+                    disk = psutil.disk_usage('/')
+                memory = psutil.virtual_memory()
+
+                return {
+                    'os': platform.system(),
+                    'os_version': platform.version(),
+                    'cpu_count': psutil.cpu_count(),
+                    'cpu_percent': psutil.cpu_percent(interval=0.1),
+                    'memory_total_gb': round(memory.total / 1024 / 1024 / 1024, 2),
+                    'memory_used_gb': round(memory.used / 1024 / 1024 / 1024, 2),
+                    'memory_percent': memory.percent,
+                    'disk_total_gb': round(disk.total / 1024 / 1024 / 1024, 2),
+                    'disk_used_gb': round(disk.used / 1024 / 1024 / 1024, 2),
+                    'disk_percent': disk.percent
+                }
+            else:
+                memory_percent = 0
+                cpu_count = os.cpu_count() or 0
+                return {
+                    'os': platform.system(),
+                    'os_version': platform.version(),
+                    'cpu_count': cpu_count,
+                    'cpu_percent': 0,
+                    'memory_total_gb': 0,
+                    'memory_used_gb': 0,
+                    'memory_percent': memory_percent,
+                    'disk_total_gb': 0,
+                    'disk_used_gb': 0,
+                    'disk_percent': 0
+                }
         
         # 打开应用
         @self.register_command('open_app')
         def open_app(params):
-            """打开应用程序"""
             app_name = params.get('app_name', '')
-            
-            app_map = {
-                '记事本': 'notepad.exe',
-                '计算器': 'calc.exe',
-                '画图': 'mspaint.exe',
-                '资源管理器': 'explorer.exe'
-            }
-            
+
+            if sys.platform == 'darwin':
+                app_map = {
+                    '记事本': ('open', ['-a', 'TextEdit']),
+                    '计算器': ('open', ['-a', 'Calculator']),
+                    '终端': ('open', ['-a', 'Terminal']),
+                    'Finder': ('open', ['-a', 'Finder']),
+                }
+            else:
+                app_map = {
+                    '记事本': ('notepad.exe', []),
+                    '计算器': ('calc.exe', []),
+                    '画图': ('mspaint.exe', []),
+                    '资源管理器': ('explorer.exe', []),
+                }
+
             if app_name in app_map:
-                subprocess.Popen(app_map[app_name])
+                cmd, args = app_map[app_name]
+                subprocess.Popen([cmd] + args)
                 return {'message': f'已打开 {app_name}'}
             else:
                 return {'error': f'未知应用: {app_name}'}
