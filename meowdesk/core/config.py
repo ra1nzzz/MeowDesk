@@ -3,6 +3,7 @@
 """
 
 import os
+import sys
 import json
 from typing import Dict, Any, Optional
 
@@ -10,9 +11,19 @@ from typing import Dict, Any, Optional
 class ConfigManager:
     """配置管理器"""
     
+    if sys.platform == 'win32':
+        _default_archive_dir = "D:\\meow-file"
+        _default_temp_dir = "D:\\meow-temp"
+    elif sys.platform == 'darwin':
+        _default_archive_dir = os.path.expanduser('~/MeowDesk/file')
+        _default_temp_dir = os.path.expanduser('~/MeowDesk/temp')
+    else:
+        _default_archive_dir = os.path.expanduser('~/meow-file')
+        _default_temp_dir = os.path.expanduser('~/meow-temp')
+
     DEFAULT_CONFIG = {
-        "archive_dir": "D:\\meow-file",
-        "temp_dir": "D:\\meow-temp",
+        "archive_dir": _default_archive_dir,
+        "temp_dir": _default_temp_dir,
         "window_opacity": 0.85,
         "auto_open_html": False,
         "screenshot_action": "recycle",

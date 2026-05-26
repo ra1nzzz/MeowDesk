@@ -1,10 +1,10 @@
 {
-  "archive_dir": "D:\\meow-file",
-  "temp_dir": "D:\\meow-temp",
-  "window_position": [
-    1516,
-    430
-  ],
+  "archive_dir": "/Users/yitao/MeowDesk/file",
+  "temp_dir": "/Users/yitao/MeowDesk/temp",
+  "window_opacity": 0.85,
+  "auto_open_html": false,
+  "screenshot_action": "recycle",
+  "window_position": null,
   "categories": {
     "截图": {
       "exts": [
