@@ -8,7 +8,7 @@ import time
 import random
 import math
 import tkinter as tk
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Dict
 from datetime import datetime
 from PIL import Image
 
@@ -82,31 +82,38 @@ class MeowWindow:
         # 右键菜单
         self.context_menu = None
         
+        # 提醒相关
+        self.last_reminder_check = ""  # 上次检查的分钟，避免重复提醒
+        self.reminder_check_interval = 30  # 检查间隔（秒）
+        self.last_reminder_check_time = 0
+        
         # 回调
         self.on_quit_callback: Optional[Callable] = None
     
     def create(self):
         """创建窗口"""
+        # 先初始化动画管理器获取尺寸
+        self.window_width, self.window_height = self.animation.get_frame_size(AnimationManager.IDLE)
+        
         # 导入平台窗口
         if sys.platform == 'win32':
             from ..platform.windows import WindowsWindow
-            self.platform_window = WindowsWindow(128, 128)
+            self.platform_window = WindowsWindow(self.window_width, self.window_height)
         elif sys.platform == 'darwin':
             from ..platform.macos import MacOSWindow
-            self.platform_window = MacOSWindow(128, 128)
+            self.platform_window = MacOSWindow(self.window_width, self.window_height)
         else:
             raise NotImplementedError(f"不支持的平台: {sys.platform}")
         
         # 创建窗口
         self.platform_window.create()
         
-        # 获取初始尺寸
-        self.window_width, self.window_height = self.animation.get_frame_size(AnimationManager.IDLE)
-        
         # 设置回调
         self.platform_window.on_drop(self._on_files_dropped)
         self.platform_window.on_click(self._on_click)
         self.platform_window.on_right_click(self._on_right_click)
+        self.platform_window.on_drag_start(self._on_drag_start)
+        self.platform_window.on_drag_end(self._on_drag_end)
         
         # 移动到保存的位置
         self._move_to_saved_position()
@@ -122,7 +129,8 @@ class MeowWindow:
             self.context_menu = ContextMenu(
                 self.platform_window.root,
                 self.config,
-                on_quit_callback=self.quit
+                on_quit_callback=self.quit,
+                on_settings_saved=self._on_settings_saved
             )
         
         # 初始化闲逛
@@ -208,12 +216,28 @@ class MeowWindow:
         # 闲逛
         self._wander_tick()
         
+        # 检查提醒
+        self._check_reminders()
+        
         # 获取当前帧
         frame = self.animation.get_frame(self.state, self.frame_index)
         if frame:
             # 如果有气泡文字，绘制到帧上
             if self.bubble_text and self.bubble_timer > 0:
                 frame = self._draw_bubble(frame, self.bubble_text)
+            
+            # 检查帧尺寸是否变化，动态调整窗口大小
+            fw, fh = frame.size
+            if fw != self.window_width or fh != self.window_height:
+                old_h = self.window_height
+                self.window_width = fw
+                self.window_height = fh
+                self.platform_window.set_size(fw, fh)
+                # 补偿 y 使猫咪保持在同一位置（气泡向上扩展）
+                dy = fh - old_h
+                if dy != 0:
+                    x, y = self.platform_window.get_position()
+                    self.platform_window.set_position(x, y - dy)
             
             self.platform_window.render(frame)
         
@@ -225,7 +249,7 @@ class MeowWindow:
         # 继续动画
         delay = self.animation.get_frame_duration(self.state, self.frame_index)
         if hasattr(self.platform_window, 'root') and self.platform_window.root:
-            self.platform_window.root.after(delay, self._animate)
+            self.platform_window.root.after(int(delay), self._animate)
     
     def _start_macos_animation(self):
         """启动 macOS 动画循环"""
@@ -390,13 +414,87 @@ class MeowWindow:
         )
         self.wander_pause_until = time.time() + random.uniform(3, 8)
     
+    def _check_reminders(self):
+        """检查定时提醒"""
+        now = time.time()
+        
+        # 控制检查频率
+        if now - self.last_reminder_check_time < self.reminder_check_interval:
+            return
+        self.last_reminder_check_time = now
+        
+        # 获取当前时间
+        current_time = datetime.now().strftime('%H:%M')
+        
+        # 避免同一分钟内重复提醒
+        if current_time == self.last_reminder_check:
+            return
+        
+        # 获取提醒列表
+        reminders = self.config.get('reminders', [])
+        if not reminders:
+            return
+        
+        # 检查是否有需要触发的提醒
+        for reminder in reminders:
+            if not reminder.get('enabled', True):
+                continue
+            
+            reminder_time = reminder.get('time', '')
+            if reminder_time == current_time:
+                # 检查重复规则
+                if self._should_trigger_reminder(reminder):
+                    content = reminder.get('content', reminder.get('name', '提醒'))
+                    self._show_bubble(content, 120)  # 显示 120 帧（约 10 秒）
+                    print(f"[提醒] {reminder.get('name')}: {content}")
+        
+        self.last_reminder_check = current_time
+    
+    def _should_trigger_reminder(self, reminder: Dict) -> bool:
+        """检查是否应该触发提醒"""
+        repeat = reminder.get('repeat', '不重复')
+        
+        if repeat == '不重复':
+            # 检查今天是否已经提醒过
+            today = datetime.now().strftime('%Y-%m-%d')
+            last_triggered = reminder.get('last_triggered', '')
+            if last_triggered == today:
+                return False
+            # 记录触发时间
+            reminder['last_triggered'] = today
+            return True
+        
+        elif repeat == '每天':
+            return True
+        
+        elif repeat == '每周':
+            # 检查是否是同一天（周一=0, 周日=6）
+            weekday = datetime.now().weekday()
+            trigger_days = reminder.get('trigger_days', [weekday])
+            return weekday in trigger_days
+        
+        elif repeat == '每月':
+            # 检查是否是同一天
+            day = datetime.now().day
+            trigger_day = reminder.get('trigger_day', 1)
+            return day == trigger_day
+        
+        elif repeat == '每年':
+            # 检查是否是同一天
+            now = datetime.now()
+            month = reminder.get('trigger_month', now.month)
+            day = reminder.get('trigger_day', now.day)
+            return now.month == month and now.day == day
+        
+        return False
+    
     def _touch(self):
         """触摸（重置交互时间）"""
         self.last_interaction = time.time()
         self.wander_target = None
     
     def _on_click(self):
-        """点击事件"""
+        """点击事件（仅在没有移动时触发）"""
         self._touch()
         
         # 多次点击检测
@@ -414,19 +512,41 @@ class MeowWindow:
         
         # TODO: 双击打开 AI 对话
     
-    def _on_right_click(self):
+    def _on_drag_start(self):
+        """拖动开始事件"""
+        self._touch()
+        self.dragging = True
+        
+        # 拖动时切换到 SHY 状态
+        if self.state not in (AnimationManager.RECEIVING, AnimationManager.CARRYING, AnimationManager.SLEEPING):
+            self.state = AnimationManager.SHY
+            self.shy_timer = 300  # 长定时器，释放时清除
+            self.frame_index = 0
+    
+    def _on_drag_end(self, x: int, y: int):
+        """拖动结束事件"""
+        self.dragging = False
+        
+        # 保存窗口位置
+        self.config.set('window_position', [x, y])
+        
+        # 恢复到 IDLE 状态
+        if self.state == AnimationManager.SHY:
+            self.state = AnimationManager.IDLE
+            self.frame_index = 0
+    
+    def _on_right_click(self, x: int = None, y: int = None):
         """右键菜单"""
         if not self.context_menu or not self.platform_window:
             return
         
-        # Windows: 使用 Tkinter 获取鼠标位置
-        if hasattr(self.platform_window, 'root') and self.platform_window.root:
+        # 使用传递的位置，或获取当前鼠标位置
+        if x is not None and y is not None:
+            self.context_menu.show(x, y)
+        elif hasattr(self.platform_window, 'root') and self.platform_window.root:
             x = self.platform_window.root.winfo_pointerx()
             y = self.platform_window.root.winfo_pointery()
             self.context_menu.show(x, y)
-        # macOS: TODO - 实现 NSMenu
-        else:
-            print("右键菜单（macOS NSMenu 待实现）")
     
     def _on_files_dropped(self, files: List[str]):
         """文件拖放事件"""
@@ -631,6 +751,27 @@ class MeowWindow:
             print(f"❌ HTML 生成失败: {e}")
             import traceback
             traceback.print_exc()
+    
+    def _on_settings_saved(self):
+        """设置保存后的回调"""
+        # 重新加载动画（如果 scale 变化）
+        scale = self.config.get('scale', 0.5)
+        if abs(scale - self.animation.scale) > 0.01:
+            self.animation = AnimationManager(self.assets_dir, scale)
+            # 更新窗口尺寸
+            w, h = self.animation.get_frame_size(self.state)
+            self.window_width = w
+            self.window_height = h
+            if self.platform_window:
+                self.platform_window.set_size(w, h)
+        
+        # 更新文件处理器
+        self.file_handler = FileHandler(
+            self.config.get('archive_dir'),
+            self.config.get('temp_dir')
+        )
+        
+        print("设置已更新")
     
     def _show_bubble(self, text: str, duration: int):
         """显示气泡提示"""

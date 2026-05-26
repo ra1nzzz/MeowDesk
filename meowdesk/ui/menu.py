@@ -5,18 +5,20 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import Menu
+from tkinter import Menu, messagebox, filedialog
 import webbrowser
 import subprocess
+from .settings import SettingsPanel
 
 
 class ContextMenu:
     """右键菜单"""
     
-    def __init__(self, parent, config, on_quit_callback=None):
+    def __init__(self, parent, config, on_quit_callback=None, on_settings_saved=None):
         self.parent = parent
         self.config = config
         self.on_quit_callback = on_quit_callback
+        self.on_settings_saved = on_settings_saved  # 设置保存后的回调
         
         self.menu = None
         self._create_menu()
@@ -172,19 +174,13 @@ class ContextMenu:
             print(f"查询失败: {result.get('error')}")
     
     def _open_settings(self):
-        """打开设置"""
-        config_file = os.path.join(
-            os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.getcwd(),
-            'config.json'
-        )
-        
-        if os.path.exists(config_file):
-            if sys.platform == 'win32':
-                os.startfile(config_file)
-            elif sys.platform == 'darwin':
-                subprocess.Popen(['open', config_file])
-        else:
-            print(f"配置文件不存在: {config_file}")
+        """打开设置面板"""
+        SettingsPanel(self.parent, self.config, on_save_callback=self._on_settings_saved)
+    
+    def _on_settings_saved(self):
+        """设置保存回调"""
+        if self.on_settings_saved:
+            self.on_settings_saved()
     
     def _show_about(self):
         """显示关于"""

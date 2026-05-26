@@ -18,6 +18,8 @@ class PlatformWindow(ABC):
         self.on_drop_callback: Optional[Callable] = None
         self.on_click_callback: Optional[Callable] = None
         self.on_right_click_callback: Optional[Callable] = None
+        self.on_drag_start_callback: Optional[Callable] = None
+        self.on_drag_end_callback: Optional[Callable] = None
     
     @abstractmethod
     def create(self):
@@ -43,6 +45,11 @@ class PlatformWindow(ABC):
     def get_position(self) -> Tuple[int, int]:
         """获取窗口位置"""
         pass
+    
+    def set_size(self, width: int, height: int):
+        """设置窗口大小"""
+        self.width = width
+        self.height = height
     
     @abstractmethod
     def render(self, image: Image.Image):
@@ -70,6 +77,14 @@ class PlatformWindow(ABC):
     def on_right_click(self, callback: Callable):
         """设置右键回调"""
         self.on_right_click_callback = callback
+    
+    def on_drag_start(self, callback: Callable):
+        """设置拖动开始回调"""
+        self.on_drag_start_callback = callback
+    
+    def on_drag_end(self, callback: Callable):
+        """设置拖动结束回调，参数为 (x, y)"""
+        self.on_drag_end_callback = callback
     
     @abstractmethod
     def run(self):
