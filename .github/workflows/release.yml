@@ -27,49 +27,78 @@ jobs:
       - name: 构建单文件版（standalone .exe）
         shell: pwsh
         run: |
-          pyinstaller --noconfirm 妙喵桌宠-onefile.spec
+          echo "=== 开始构建单文件版 ==="
+          pyinstaller --noconfirm meowdesk-onefile.spec
+          echo ""
+          echo "=== 列出 dist 目录内容 ==="
+          Get-ChildItem -Path "dist" -Recurse | Select-Object FullName, Length
+          echo ""
           echo "=== 检查构建产物 ==="
-          if (Test-Path "dist/妙喵桌宠.exe") {
-            $size = (Get-Item "dist/妙喵桌宠.exe").Length
-            echo "单文件 EXE 构建成功: $size bytes"
-            Copy-Item "dist/妙喵桌宠.exe" -Destination "MeowDesk-standalone.exe"
-            echo "已复制到工作目录"
+          if (Test-Path "dist/MeowDesk.exe") {
+            $size = (Get-Item "dist/MeowDesk.exe").Length
+            echo "✅ 单文件 EXE 构建成功: $size bytes"
+            Copy-Item "dist/MeowDesk.exe" -Destination "MeowDesk-standalone.exe"
+            echo "✅ 已复制到工作目录"
           } else {
-            echo "ERROR: 单文件 EXE 构建产物不存在！"
+            echo "❌ ERROR: 单文件 EXE 构建产物不存在！"
+            echo "dist 目录内容："
+            Get-ChildItem -Path "dist" -Recurse
             exit 1
           }
 
       - name: 构建完整版（文件夹）
         shell: pwsh
         run: |
-          pyinstaller --noconfirm 妙喵桌宠.spec
+          echo "=== 开始构建完整版 ==="
+          # 清理之前的构建
+          Remove-Item -Path "dist/MeowDesk" -Recurse -Force -ErrorAction SilentlyContinue
+          pyinstaller --noconfirm meowdesk.spec
+          echo ""
+          echo "=== 列出 dist/MeowDesk 目录内容 ==="
+          Get-ChildItem -Path "dist/MeowDesk" -Recurse | Select-Object FullName, Length
+          echo ""
           echo "=== 检查构建产物 ==="
-          if (Test-Path "dist/妙喵桌宠/妙喵桌宠.exe") {
-            echo "完整版构建成功"
+          if (Test-Path "dist/MeowDesk/MeowDesk.exe") {
+            $size = (Get-Item "dist/MeowDesk/MeowDesk.exe").Length
+            echo "✅ 完整版构建成功: $size bytes"
           } else {
-            echo "ERROR: 完整版构建产物不存在！"
+            echo "❌ ERROR: 完整版构建产物不存在！"
+            echo "dist/MeowDesk 目录内容："
+            Get-ChildItem -Path "dist/MeowDesk" -Recurse -ErrorAction SilentlyContinue
             exit 1
           }
 
       - name: 打包完整版为 ZIP
         shell: pwsh
         run: |
-          Compress-Archive -Path "dist/妙喵桌宠/*" -DestinationPath "MeowDesk.zip"
-          echo "ZIP 包大小: $((Get-Item MeowDesk.zip).Length) bytes"
+          Compress-Archive -Path "dist/MeowDesk/*" -DestinationPath "MeowDesk.zip"
+          $size = (Get-Item MeowDesk.zip).Length
+          $sizeMB = [math]::Round($size / 1MB, 2)
+          echo "✅ ZIP 包大小: $sizeMB MB ($size bytes)"
 
       - name: 验证所有构建产物
         shell: pwsh
         run: |
+          echo "=== 工作目录所有文件 ==="
+          Get-ChildItem -Path "." | Select-Object Name, Length
+          echo ""
           echo "=== 构建产物清单 ==="
-          Get-ChildItem -Path "." -Include "MeowDesk*" -Name
+          Get-ChildItem -Path "." -Filter "MeowDesk*" | Select-Object Name, Length
+          echo ""
           $files = @("MeowDesk.zip", "MeowDesk-standalone.exe")
+          $allExist = $true
           foreach ($f in $files) {
             if (Test-Path $f) {
-              echo "✅ $f - $((Get-Item $f).Length) bytes"
+              $size = (Get-Item $f).Length
+              $sizeMB = [math]::Round($size / 1MB, 2)
+              echo "✅ $f - $sizeMB MB ($size bytes)"
             } else {
               echo "❌ $f - 缺失！"
-              exit 1
+              $allExist = $false
             }
+          }
+          if (-not $allExist) {
+            exit 1
           }
 
       - name: 创建 Release 并上传
@@ -92,3 +121,14 @@ jobs:
             MeowDesk.zip
             MeowDesk-standalone.exe
           generate_release_notes: false
+
+      - name: 上传构建日志（失败时）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build/
+            dist/
+            *.log
+          retention-days: 7
