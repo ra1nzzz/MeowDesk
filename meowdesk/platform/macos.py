@@ -43,6 +43,8 @@ else:
 
 if MACOS_AVAILABLE:
 
+    from Cocoa import NSOpenPanel
+
     class MeowNSWindow(NSWindow):
 
         def canBecomeKeyWindow(self):
@@ -438,6 +440,60 @@ class MacOSWindow(PlatformWindow):
         if self.view:
             self.view.registerForDraggedTypes_([NSFilenamesPboardType, "public.file-url"])
             print("✅ macOS 拖放已启用")
+
+    @staticmethod
+    def check_directory_writable(dir_path: str) -> bool:
+        if not os.path.exists(dir_path):
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+            except OSError:
+                return False
+        test_file = os.path.join(dir_path, '.meowdesk_write_test')
+        try:
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            return True
+        except (PermissionError, OSError):
+            return False
+
+    def request_directory_access(self, dir_path: str) -> bool:
+        try:
+            panel = NSOpenPanel.openPanel()
+            panel.setTitle_("MeowDesk 需要访问归档目录")
+            panel.setPrompt_("授权访问")
+            panel.setCanChooseFiles_(False)
+            panel.setCanChooseDirectories_(True)
+            panel.setAllowsMultipleSelection_(False)
+            panel.setShowsHiddenFiles_(True)
+
+            if os.path.exists(dir_path):
+                from Foundation import NSURL
+                url = NSURL.fileURLWithPath_(dir_path)
+                panel.setDirectoryURL_(url)
+
+            result = panel.runModal()
+
+            if result == 1:
+                selected_url = panel.URLs()[0]
+                selected_path = str(selected_url.path())
+
+                access_granted, error = selected_url.startAccessingSecurityScopedResource()
+                if access_granted:
+                    print(f"✅ 已获取目录访问权限: {selected_path}")
+                    return True
+                else:
+                    print(f"⚠️ 安全作用域访问失败: {error}")
+                    return False
+            else:
+                print("用户取消了目录授权")
+                return False
+
+        except Exception as e:
+            print(f"请求目录访问失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     def get_screen_size(self) -> Tuple[int, int]:
         if NSScreen.mainScreen():
