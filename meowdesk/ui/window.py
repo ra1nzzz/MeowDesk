@@ -592,13 +592,16 @@ class MeowWindow:
     def _open_html(self):
         archive_dir = self.config.get('archive_dir')
 
-        os.makedirs(archive_dir, exist_ok=True)
+        if not os.path.exists(archive_dir):
+            try:
+                os.makedirs(archive_dir, exist_ok=True)
+            except OSError as e:
+                self._show_bubble(f"归档目录无法创建: {e}", 120)
+                return
 
-        db_file = os.path.join(archive_dir, '.filedb.json')
-        if not os.path.exists(db_file):
-            import json
-            with open(db_file, 'w', encoding='utf-8') as f:
-                json.dump([], f)
+        if not os.access(archive_dir, os.W_OK):
+            self._show_bubble(f"归档目录不可写: {archive_dir}", 120)
+            return
 
         html_file = os.path.join(archive_dir, 'index.html')
 
@@ -713,6 +716,18 @@ class MeowWindow:
         self._touch()
         print(f"收到 {len(files)} 个文件")
 
+        archive_dir = self.config.get('archive_dir')
+        if not os.path.exists(archive_dir):
+            try:
+                os.makedirs(archive_dir, exist_ok=True)
+            except OSError as e:
+                self._show_bubble(f"归档目录无法创建: {e}", 120)
+                return
+
+        if not os.access(archive_dir, os.W_OK):
+            self._show_bubble(f"归档目录不可写: {archive_dir}", 120)
+            return
+
         all_files = []
         folders_to_remove = []
 
@@ -737,13 +752,15 @@ class MeowWindow:
             self.surprised_timer = 10
             self.frame_index = 0
             self._show_bubble(f"收到 {count} 个文件，正在处理...", 120)
-            self._process_files(all_files, folders_to_remove, big_batch=True)
         else:
             self.state = AnimationManager.SURPRISED
             self.surprised_timer = 10
             self.frame_index = 0
             self._show_bubble(f"收到 {count} 个文件", 40)
-            self._process_files(all_files, folders_to_remove)
+
+        import threading
+        t = threading.Thread(target=self._process_files_async, args=(all_files, folders_to_remove, count >= 10), daemon=True)
+        t.start()
 
     def _process_files(self, files: List[str], folders_to_remove: List[str] = None, big_batch: bool = False):
         self.processing = True
@@ -758,6 +775,7 @@ class MeowWindow:
         recycled = 0
         archived = 0
         duplicated = 0
+        errors = 0
 
         for filepath in files:
             try:
@@ -766,9 +784,12 @@ class MeowWindow:
                     recycled += 1
                 elif result == 'duplicate':
                     duplicated += 1
+                elif result == 'error':
+                    errors += 1
                 else:
                     archived += 1
             except Exception as e:
+                errors += 1
                 print(f"处理文件失败 {os.path.basename(filepath)}: {e}")
 
         if folders_to_remove:
@@ -791,6 +812,8 @@ class MeowWindow:
             parts.append(f"{archived} 已归档")
         if duplicated:
             parts.append(f"{duplicated} 重复跳过")
+        if errors:
+            parts.append(f"{errors} 失败")
 
         message = " · ".join(parts) if parts else "完成"
         print(f"处理完成: {message}")
@@ -805,6 +828,15 @@ class MeowWindow:
         self.frame_index = 0
         self.click_times.clear()
         self._show_bubble(message, 80)
+
+    def _process_files_async(self, files: List[str], folders_to_remove: List[str], big_batch: bool):
+        try:
+            self._process_files(files, folders_to_remove, big_batch)
+        except Exception as e:
+            self.processing = False
+            print(f"文件处理异常: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _process_single_file(self, filepath: str) -> str:
         filename = os.path.basename(filepath)
@@ -862,6 +894,11 @@ class MeowWindow:
 
     def _update_html(self):
         try:
+            archive_dir = self.config.get('archive_dir')
+            if not os.path.exists(archive_dir) or not os.access(archive_dir, os.W_OK):
+                print("⚠️ 归档目录不可写，跳过 HTML 生成")
+                return
+
             import importlib.util
 
             if getattr(sys, 'frozen', False):
@@ -875,10 +912,7 @@ class MeowWindow:
                 spec = importlib.util.spec_from_file_location("_gen_html", gen_html_path)
                 gen_html = importlib.util.module_from_spec(spec)
 
-                archive_dir = self.config.get('archive_dir')
-                db_file = self.db.db_path
-
-                gen_html.DB_FILE = db_file
+                gen_html.DB_FILE = self.db.db_path
                 gen_html.ARCHIVE_DIR = archive_dir
                 gen_html.ARCHIVE_URL = archive_dir.replace("\\", "/")
 
