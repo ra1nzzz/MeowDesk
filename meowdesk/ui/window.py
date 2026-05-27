@@ -752,10 +752,14 @@ class MeowWindow:
                 self._show_bubble("归档目录需要授权", 60)
                 granted = self.platform_window.request_directory_access(archive_dir)
                 if not granted:
-                    self._show_bubble("请在系统设置中添加 Python 到完全磁盘访问权限", 120)
+                    app_bundle = self.platform_window._find_app_bundle()
+                    if app_bundle:
+                        self._show_bubble("请将 MeowDesk.app 添加到完全磁盘访问权限", 120)
+                    else:
+                        self._show_bubble("请将 Python 添加到完全磁盘访问权限", 120)
                     return False
                 if not self.platform_window.check_directory_writable(archive_dir):
-                    self._show_bubble("请在系统设置→隐私→完全磁盘访问权限中添加 Python", 120)
+                    self._show_bubble("请在系统设置→隐私→完全磁盘访问权限中添加", 120)
                     return False
         else:
             if not os.path.exists(archive_dir):

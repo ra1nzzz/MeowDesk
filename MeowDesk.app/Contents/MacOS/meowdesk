@@ -1,0 +1,11 @@
+#!/bin/bash
+# MeowDesk Launcher
+# This script is the entry point for the MeowDesk.app bundle
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+PROJECT_DIR="$(dirname "$APP_DIR")"
+
+cd "$PROJECT_DIR"
+
+exec python3 "$PROJECT_DIR/meowdesk_main.py"

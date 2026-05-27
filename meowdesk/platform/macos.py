@@ -463,15 +463,24 @@ class MacOSWindow(PlatformWindow):
             from Foundation import NSURL
             import subprocess
 
+            app_bundle_path = self._find_app_bundle()
             python_path = sys.executable
+
+            if app_bundle_path:
+                target_path = app_bundle_path
+                target_label = "MeowDesk.app"
+            else:
+                target_path = python_path
+                target_label = python_path
 
             panel = NSOpenPanel.openPanel()
             panel.setTitle_("MeowDesk - 授权归档目录")
             panel.setPrompt_("选择并授权")
             panel.setMessage_(
-                "如果无法写入归档目录，请将 Python 添加到系统设置的「完全磁盘访问权限」中。\n\n"
-                "路径: " + python_path + "\n\n"
-                "点击下方按钮可直接打开系统设置。"
+                "无法写入归档目录，需要授予「完全磁盘访问权限」。\n\n"
+                "请将 " + target_label + " 添加到：\n"
+                "系统设置 → 隐私与安全性 → 完全磁盘访问权限\n\n"
+                "点击「打开系统设置」按钮可直接跳转。"
             )
             panel.setCanChooseFiles_(False)
             panel.setCanChooseDirectories_(True)
@@ -495,22 +504,31 @@ class MacOSWindow(PlatformWindow):
 
                 if self.check_directory_writable(selected_path):
                     print(f"✅ 已获取目录访问权限: {selected_path}")
-                    if selected_path != dir_path:
-                        print(f"  用户选择了新目录: {selected_path}")
                     return True
-                else:
-                    print("⚠️ 选择目录后仍无法写入，尝试打开系统设置")
-                    self._open_full_disk_access_settings()
-                    return False
-            else:
-                self._open_full_disk_access_settings()
-                return False
+
+            self._open_full_disk_access_settings()
+            return False
 
         except Exception as e:
             print(f"请求目录访问失败: {e}")
             import traceback
             traceback.print_exc()
             return False
+
+    @staticmethod
+    def _find_app_bundle():
+        exec_path = os.path.abspath(sys.executable)
+        if '.app/Contents/MacOS/' in exec_path:
+            parts = exec_path.split('.app/Contents/MacOS/')
+            return parts[0] + '.app'
+
+        main_script = os.path.abspath(sys.argv[0]) if sys.argv else ''
+        project_dir = os.path.dirname(main_script)
+        app_bundle = os.path.join(project_dir, 'MeowDesk.app')
+        if os.path.isdir(app_bundle):
+            return app_bundle
+
+        return None
 
     @staticmethod
     def _open_full_disk_access_settings():
