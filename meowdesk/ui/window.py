@@ -592,15 +592,7 @@ class MeowWindow:
     def _open_html(self):
         archive_dir = self.config.get('archive_dir')
 
-        if not os.path.exists(archive_dir):
-            try:
-                os.makedirs(archive_dir, exist_ok=True)
-            except OSError as e:
-                self._show_bubble(f"归档目录无法创建: {e}", 120)
-                return
-
-        if not os.access(archive_dir, os.W_OK):
-            self._show_bubble(f"归档目录不可写: {archive_dir}", 120)
+        if not self._ensure_archive_dir_writable(archive_dir):
             return
 
         html_file = os.path.join(archive_dir, 'index.html')
@@ -717,15 +709,7 @@ class MeowWindow:
         print(f"收到 {len(files)} 个文件")
 
         archive_dir = self.config.get('archive_dir')
-        if not os.path.exists(archive_dir):
-            try:
-                os.makedirs(archive_dir, exist_ok=True)
-            except OSError as e:
-                self._show_bubble(f"归档目录无法创建: {e}", 120)
-                return
-
-        if not os.access(archive_dir, os.W_OK):
-            self._show_bubble(f"归档目录不可写: {archive_dir}", 120)
+        if not self._ensure_archive_dir_writable(archive_dir):
             return
 
         all_files = []
@@ -761,6 +745,29 @@ class MeowWindow:
         import threading
         t = threading.Thread(target=self._process_files_async, args=(all_files, folders_to_remove, count >= 10), daemon=True)
         t.start()
+
+    def _ensure_archive_dir_writable(self, archive_dir: str) -> bool:
+        if sys.platform == 'darwin' and hasattr(self.platform_window, 'check_directory_writable'):
+            if not self.platform_window.check_directory_writable(archive_dir):
+                self._show_bubble("归档目录需要授权，请在弹窗中选择目录", 120)
+                granted = self.platform_window.request_directory_access(archive_dir)
+                if not granted:
+                    self._show_bubble("未获得目录访问权限", 80)
+                    return False
+                if not self.platform_window.check_directory_writable(archive_dir):
+                    self._show_bubble("授权后仍无法写入，请检查权限设置", 120)
+                    return False
+        else:
+            if not os.path.exists(archive_dir):
+                try:
+                    os.makedirs(archive_dir, exist_ok=True)
+                except OSError as e:
+                    self._show_bubble(f"归档目录无法创建: {e}", 120)
+                    return False
+            if not os.access(archive_dir, os.W_OK):
+                self._show_bubble(f"归档目录不可写: {archive_dir}", 120)
+                return False
+        return True
 
     def _process_files(self, files: List[str], folders_to_remove: List[str] = None, big_batch: bool = False):
         self.processing = True
