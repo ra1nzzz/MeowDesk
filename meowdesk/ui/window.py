@@ -104,6 +104,10 @@ class MeowWindow:
             self.platform_window.on_mouse_enter(self._on_mouse_enter)
         if hasattr(self.platform_window, 'on_mouse_exit'):
             self.platform_window.on_mouse_exit(self._on_mouse_exit)
+        if hasattr(self.platform_window, 'on_drag_enter'):
+            self.platform_window.on_drag_enter(self._on_drag_enter)
+        if hasattr(self.platform_window, 'on_drag_exit'):
+            self.platform_window.on_drag_exit(self._on_drag_exit)
 
         # 移动到保存的位置
         self._move_to_saved_position()
@@ -219,7 +223,8 @@ class MeowWindow:
         if sys.platform != 'darwin':
             return
 
-        from Foundation import NSTimer
+        from Foundation import NSTimer, NSRunLoop
+        from AppKit import NSEventTrackingRunLoopMode
 
         if hasattr(self, 'macos_timer') and self.macos_timer:
             self.macos_timer.invalidate()
@@ -232,10 +237,19 @@ class MeowWindow:
             None,
             True
         )
+        NSRunLoop.currentRunLoop().addTimer_forMode_(
+            self.macos_timer, NSEventTrackingRunLoopMode
+        )
 
         self.platform_window.view.animation_callback = self._macos_animate
 
     def _macos_animate(self):
+        if sys.platform == 'darwin':
+            from .macos_settings import check_settings_saved
+            if check_settings_saved():
+                self.config.config = self.config.load()
+                self._on_settings_saved()
+
         self._update_state()
 
         self._wander_tick()
@@ -249,15 +263,10 @@ class MeowWindow:
 
             fw, fh = frame.size
             if fw != self.window_width or fh != self.window_height:
-                old_h = self.window_height
                 self.window_width = fw
                 self.window_height = fh
                 if self.platform_window:
                     self.platform_window.set_size(fw, fh)
-                dy = fh - old_h
-                if dy != 0:
-                    x, y = self.platform_window.get_position()
-                    self.platform_window.set_position(x, y - dy)
 
             self.platform_window.render(frame)
 
@@ -352,8 +361,9 @@ class MeowWindow:
         if self.shy_timer > 0:
             self.shy_timer -= 1
             if self.shy_timer == 0 and self.state == AnimationManager.SHY:
-                self.state = AnimationManager.IDLE
-                self.frame_index = 0
+                if not self.dragging:
+                    self.state = AnimationManager.IDLE
+                    self.frame_index = 0
 
         if (not self.processing and
             self.state == AnimationManager.IDLE and
@@ -515,6 +525,17 @@ class MeowWindow:
     def _on_mouse_exit(self):
         pass
 
+    def _on_drag_enter(self):
+        if self.state not in (AnimationManager.RECEIVING, AnimationManager.CARRYING):
+            self.state = AnimationManager.SURPRISED
+            self.surprised_timer = 30
+            self.frame_index = 0
+
+    def _on_drag_exit(self):
+        if self.state == AnimationManager.SURPRISED and not self.processing:
+            self.state = AnimationManager.IDLE
+            self.frame_index = 0
+
     def _on_drag_start(self):
         """拖动开始事件"""
         self.dragging = True
@@ -572,6 +593,12 @@ class MeowWindow:
         archive_dir = self.config.get('archive_dir')
 
         os.makedirs(archive_dir, exist_ok=True)
+
+        db_file = os.path.join(archive_dir, '.filedb.json')
+        if not os.path.exists(db_file):
+            import json
+            with open(db_file, 'w', encoding='utf-8') as f:
+                json.dump([], f)
 
         html_file = os.path.join(archive_dir, 'index.html')
 
@@ -653,11 +680,7 @@ class MeowWindow:
     def _open_macos_settings(self):
         try:
             from .macos_settings import open_settings
-            proc = open_settings(self.config.config_path, on_saved_callback=self._on_settings_saved)
-            if proc:
-                proc.wait()
-            self.config.config = self.config.load()
-            self._on_settings_saved()
+            open_settings(self.config.config_path)
         except Exception as e:
             print(f"打开设置面板失败: {e}")
             import traceback
