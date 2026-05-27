@@ -6,6 +6,7 @@ macOS 平台实现 - 使用 PyObjC 实现透明窗口
 """
 
 import sys
+import os
 from typing import Tuple, Optional, List
 from PIL import Image
 import io
