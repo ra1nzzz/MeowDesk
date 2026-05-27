@@ -13,6 +13,7 @@ from PIL import Image
 
 from ..core import ConfigManager, FileDatabase, FileClassifier, FileHandler
 from .animation import AnimationManager
+from .menu import ContextMenu
 
 
 class MeowWindow:
