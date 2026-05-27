@@ -460,54 +460,20 @@ class MacOSWindow(PlatformWindow):
 
     def request_directory_access(self, dir_path: str) -> bool:
         try:
-            from Foundation import NSURL
             import subprocess
 
-            app_bundle_path = self._find_app_bundle()
-            python_path = sys.executable
+            self.config_archive_dir = dir_path
 
-            if app_bundle_path:
-                target_path = app_bundle_path
-                target_label = "MeowDesk.app"
+            python_app_path = self._find_python_app()
+
+            if python_app_path:
+                subprocess.Popen(['open', '-R', python_app_path])
+                self._open_full_disk_access_settings()
+                self._show_fda_alert(python_app_path)
+                return self._wait_for_permission()
             else:
-                target_path = python_path
-                target_label = python_path
-
-            panel = NSOpenPanel.openPanel()
-            panel.setTitle_("MeowDesk - 授权归档目录")
-            panel.setPrompt_("选择并授权")
-            panel.setMessage_(
-                "无法写入归档目录，需要授予「完全磁盘访问权限」。\n\n"
-                "请将 " + target_label + " 添加到：\n"
-                "系统设置 → 隐私与安全性 → 完全磁盘访问权限\n\n"
-                "点击「打开系统设置」按钮可直接跳转。"
-            )
-            panel.setCanChooseFiles_(False)
-            panel.setCanChooseDirectories_(True)
-            panel.setAllowsMultipleSelection_(False)
-            panel.setShowsHiddenFiles_(True)
-
-            if os.path.exists(dir_path):
-                url = NSURL.fileURLWithPath_(dir_path)
-                panel.setDirectoryURL_(url)
-
-            result = panel.runModal()
-
-            if result == 1:
-                selected_url = panel.URLs()[0]
-                selected_path = str(selected_url.path())
-
-                try:
-                    selected_url.startAccessingSecurityScopedResource()
-                except Exception:
-                    pass
-
-                if self.check_directory_writable(selected_path):
-                    print(f"✅ 已获取目录访问权限: {selected_path}")
-                    return True
-
-            self._open_full_disk_access_settings()
-            return False
+                self._open_full_disk_access_settings()
+                return False
 
         except Exception as e:
             print(f"请求目录访问失败: {e}")
@@ -515,18 +481,51 @@ class MacOSWindow(PlatformWindow):
             traceback.print_exc()
             return False
 
-    @staticmethod
-    def _find_app_bundle():
-        exec_path = os.path.abspath(sys.executable)
-        if '.app/Contents/MacOS/' in exec_path:
-            parts = exec_path.split('.app/Contents/MacOS/')
-            return parts[0] + '.app'
+    def _show_fda_alert(self, python_app_path: str):
+        try:
+            from Cocoa import NSAlert, NSAlertStyleInformational, NSAlertFirstButtonReturn
+            alert = NSAlert.alloc().init()
+            alert.setMessageText_("需要完全磁盘访问权限")
+            alert.setInformativeText_(
+                "无法写入归档目录，需要授予 Python 完全磁盘访问权限。\n\n"
+                "操作步骤：\n"
+                "1. 在已打开的系统设置中，点击「+」按钮\n"
+                "2. 在弹出的 Finder 窗口中选择已高亮的 Python.app\n"
+                "3. 点击「打开」并输入密码确认\n\n"
+                "添加完成后点击下方「已添加」按钮。"
+            )
+            alert.alertStyle = NSAlertStyleInformational
+            alert.addButtonWithTitle_("已添加，继续")
+            alert.addButtonWithTitle_("取消")
+            response = alert.runModal()
+            if response == NSAlertFirstButtonReturn:
+                return
+        except Exception:
+            pass
 
-        main_script = os.path.abspath(sys.argv[0]) if sys.argv else ''
-        project_dir = os.path.dirname(main_script)
-        app_bundle = os.path.join(project_dir, 'MeowDesk.app')
-        if os.path.isdir(app_bundle):
-            return app_bundle
+    def _wait_for_permission(self) -> bool:
+        archive_dir = self.config_archive_dir if hasattr(self, 'config_archive_dir') else None
+        if archive_dir:
+            return self.check_directory_writable(archive_dir)
+        return False
+
+    @staticmethod
+    def _find_python_app():
+        exec_path = os.path.abspath(sys.executable)
+        version_dir = os.path.dirname(os.path.dirname(exec_path))
+        python_app = os.path.join(version_dir, 'Resources', 'Python.app')
+        if os.path.exists(python_app):
+            return python_app
+
+        import glob
+        ver = '.'.join(str(x) for x in sys.version_info[:2])
+        pattern = f'/Library/Frameworks/Python.framework/Versions/{ver}/Resources/Python.app'
+        if os.path.exists(pattern):
+            return pattern
+
+        apps = glob.glob('/Library/Frameworks/Python.framework/Versions/*/Resources/Python.app')
+        if apps:
+            return max(apps)
 
         return None
 

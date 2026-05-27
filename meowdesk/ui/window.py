@@ -749,17 +749,12 @@ class MeowWindow:
     def _ensure_archive_dir_writable(self, archive_dir: str) -> bool:
         if sys.platform == 'darwin' and hasattr(self.platform_window, 'check_directory_writable'):
             if not self.platform_window.check_directory_writable(archive_dir):
-                self._show_bubble("归档目录需要授权", 60)
                 granted = self.platform_window.request_directory_access(archive_dir)
                 if not granted:
-                    app_bundle = self.platform_window._find_app_bundle()
-                    if app_bundle:
-                        self._show_bubble("请将 MeowDesk.app 添加到完全磁盘访问权限", 120)
-                    else:
-                        self._show_bubble("请将 Python 添加到完全磁盘访问权限", 120)
+                    self._show_bubble("请将 Python.app 添加到完全磁盘访问权限", 120)
                     return False
                 if not self.platform_window.check_directory_writable(archive_dir):
-                    self._show_bubble("请在系统设置→隐私→完全磁盘访问权限中添加", 120)
+                    self._show_bubble("授权未生效，请重启应用后重试", 120)
                     return False
         else:
             if not os.path.exists(archive_dir):
