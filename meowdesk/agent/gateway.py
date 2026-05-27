@@ -1,11 +1,22 @@
 """
 Agent Gateway - 连接本地 AI Agent (OpenClaw, Hermes 等)
+兼容 macOS / Windows
 """
 
 import json
-import requests
-from typing import Dict, Any, Optional, List
+import sys
+from typing import Dict, Any, Optional, List, Callable
 from enum import Enum
+
+# 跨平台 HTTP 请求
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+    # 使用 urllib 作为后备
+    import urllib.request
+    import urllib.error
 
 
 class AgentType(Enum):
@@ -21,170 +32,122 @@ class AgentGateway:
     def __init__(self, config: Dict[str, Any]):
         """
         初始化 Agent 网关
-        
-        Args:
-            config: 配置字典，包含：
-                - agent_type: Agent 类型 (openclaw/hermes/custom)
-                - endpoint: Agent API 地址
-                - api_key: API 密钥（如需要）
-                - timeout: 请求超时时间
         """
         self.agent_type = AgentType(config.get('agent_type', 'openclaw'))
-        self.endpoint = config.get('endpoint', 'http://localhost:8080')
+        self.endpoint = config.get('endpoint', 'http://localhost:8080').rstrip('/')
         self.api_key = config.get('api_key')
         self.timeout = config.get('timeout', 30)
         self.enabled = config.get('enabled', False)
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """获取请求头"""
+        headers = {'Content-Type': 'application/json'}
+        if self.api_key:
+            headers['Authorization'] = f'Bearer {self.api_key}'
+        return headers
+    
+    def _request(self, method: str, path: str, data: Optional[Dict] = None) -> Dict[str, Any]:
+        """发送 HTTP 请求（跨平台）"""
+        url = f"{self.endpoint}{path}"
+        headers = self._get_headers()
+        
+        if HAS_REQUESTS:
+            try:
+                if method == 'GET':
+                    response = requests.get(url, headers=headers, timeout=self.timeout)
+                else:
+                    response = requests.post(url, json=data, headers=headers, timeout=self.timeout)
+                
+                return {
+                    'success': response.status_code == 200,
+                    'status': response.status_code,
+                    'data': response.json() if response.status_code == 200 else None,
+                    'error': None if response.status_code == 200 else response.text
+                }
+            except requests.Timeout:
+                return {'success': False, 'error': '请求超时'}
+            except Exception as e:
+                return {'success': False, 'error': str(e)}
+        else:
+            # urllib 后备方案
+            try:
+                body = json.dumps(data).encode('utf-8') if data else None
+                req = urllib.request.Request(url, data=body, headers=headers, method=method)
+                
+                with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                    return {
+                        'success': True,
+                        'status': response.status,
+                        'data': json.loads(response.read().decode('utf-8')),
+                        'error': None
+                    }
+            except urllib.error.HTTPError as e:
+                return {'success': False, 'status': e.code, 'error': str(e)}
+            except Exception as e:
+                return {'success': False, 'error': str(e)}
     
     def is_available(self) -> bool:
         """检查 Agent 是否可用"""
         if not self.enabled:
             return False
         
-        try:
-            response = requests.get(
-                f"{self.endpoint}/health",
-                timeout=3
-            )
-            return response.status_code == 200
-        except Exception:
-            return False
+        result = self._request('GET', '/health')
+        return result.get('success', False)
     
     def chat(self, message: str, context: Optional[Dict] = None) -> Dict[str, Any]:
-        """
-        发送对话消息
-        
-        Args:
-            message: 用户消息
-            context: 上下文信息（可选）
-            
-        Returns:
-            Agent 响应字典：
-                - success: 是否成功
-                - response: Agent 回复
-                - actions: 建议的操作列表
-                - error: 错误信息（如有）
-        """
+        """发送对话消息"""
         if not self.enabled:
-            return {
-                'success': False,
-                'error': 'Agent 未启用'
-            }
+            return {'success': False, 'error': 'Agent 未启用'}
         
-        try:
-            payload = {
-                'message': message,
-                'context': context or {}
+        payload = {
+            'message': message,
+            'context': context or {}
+        }
+        
+        result = self._request('POST', '/chat', payload)
+        
+        if result['success']:
+            return {
+                'success': True,
+                **result['data']
             }
-            
-            headers = {}
-            if self.api_key:
-                headers['Authorization'] = f'Bearer {self.api_key}'
-            
-            response = requests.post(
-                f"{self.endpoint}/chat",
-                json=payload,
-                headers=headers,
-                timeout=self.timeout
-            )
-            
-            if response.status_code == 200:
-                return {
-                    'success': True,
-                    **response.json()
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': f'HTTP {response.status_code}: {response.text}'
-                }
-                
-        except requests.Timeout:
+        else:
             return {
                 'success': False,
-                'error': 'Agent 响应超时'
+                'error': result.get('error', '未知错误')
             }
-        except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+    
+    def chat_stream(self, message: str, context: Optional[Dict] = None, 
+                    on_token: Optional[Callable] = None) -> Dict[str, Any]:
+        """SSE 流式对话（如支持）"""
+        # 先尝试普通请求，SSE 可以后续扩展
+        return self.chat(message, context)
     
     def execute_command(self, command: str, params: Optional[Dict] = None) -> Dict[str, Any]:
-        """
-        执行命令
-        
-        Args:
-            command: 命令名称（如 'clean_disk', 'check_date'）
-            params: 命令参数
-            
-        Returns:
-            执行结果字典
-        """
+        """执行命令"""
         if not self.enabled:
-            return {
-                'success': False,
-                'error': 'Agent 未启用'
-            }
+            return {'success': False, 'error': 'Agent 未启用'}
         
-        try:
-            payload = {
-                'command': command,
-                'params': params or {}
-            }
-            
-            headers = {}
-            if self.api_key:
-                headers['Authorization'] = f'Bearer {self.api_key}'
-            
-            response = requests.post(
-                f"{self.endpoint}/execute",
-                json=payload,
-                headers=headers,
-                timeout=self.timeout
-            )
-            
-            if response.status_code == 200:
-                return {
-                    'success': True,
-                    **response.json()
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': f'HTTP {response.status_code}: {response.text}'
-                }
-                
-        except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+        payload = {
+            'command': command,
+            'params': params or {}
+        }
+        
+        result = self._request('POST', '/execute', payload)
+        
+        if result['success']:
+            return {'success': True, **result['data']}
+        else:
+            return {'success': False, 'error': result.get('error', '未知错误')}
     
     def get_suggestions(self, context: Dict[str, Any]) -> List[str]:
-        """
-        获取智能建议
-        
-        Args:
-            context: 当前上下文（文件统计、用户习惯等）
-            
-        Returns:
-            建议列表
-        """
+        """获取智能建议"""
         if not self.enabled or not self.is_available():
             return []
         
-        try:
-            response = requests.post(
-                f"{self.endpoint}/suggestions",
-                json={'context': context},
-                timeout=5
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('suggestions', [])
-            
-        except Exception:
-            pass
+        result = self._request('POST', '/suggestions', {'context': context})
+        
+        if result['success'] and result.get('data'):
+            return result['data'].get('suggestions', [])
         
         return []

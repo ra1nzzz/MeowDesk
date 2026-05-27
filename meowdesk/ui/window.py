@@ -114,10 +114,21 @@ class MeowWindow:
 
         # 创建右键菜单
         if hasattr(self.platform_window, 'root'):
-            from .menu import ContextMenu
+            # 创建 Agent Gateway
+            from ..agent import AgentGateway
+            ai_config = {
+                'enabled': self.config.get('ai_enabled', False),
+                'agent_type': self.config.get('agent_type', 'openclaw'),
+                'endpoint': self.config.get('agent_endpoint', 'http://localhost:8080'),
+                'api_key': self.config.get('agent_token', ''),
+                'timeout': self.config.get('agent_timeout', 30)
+            }
+            self.agent_gateway = AgentGateway(ai_config)
+            
             self.context_menu = ContextMenu(
                 self.platform_window.root,
                 self.config,
+                agent_gateway=self.agent_gateway,
                 on_quit_callback=self.quit,
                 on_settings_saved=self._on_settings_saved
             )

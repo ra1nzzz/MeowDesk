@@ -1,5 +1,6 @@
 """
 右键菜单模块
+兼容 macOS / Windows
 """
 
 import os
@@ -14,11 +15,13 @@ from .settings import SettingsPanel
 class ContextMenu:
     """右键菜单"""
     
-    def __init__(self, parent, config, on_quit_callback=None, on_settings_saved=None):
+    def __init__(self, parent, config, agent_gateway=None, 
+                 on_quit_callback=None, on_settings_saved=None):
         self.parent = parent
         self.config = config
+        self.agent_gateway = agent_gateway
         self.on_quit_callback = on_quit_callback
-        self.on_settings_saved = on_settings_saved  # 设置保存后的回调
+        self.on_settings_saved = on_settings_saved
         
         self.menu = None
         self._create_menu()
@@ -107,9 +110,9 @@ class ContextMenu:
             print(f"归档目录不存在: {archive_dir}")
     
     def _open_chat(self):
-        """打开 AI 对话"""
-        # TODO: 实现对话窗口
-        print("打开 AI 对话（待实现）")
+        """打开 AI 对话窗口"""
+        from .chat import ChatWindow
+        ChatWindow(self.parent, self.config, agent_gateway=self.agent_gateway)
     
     def _clean_disk(self):
         """清理磁盘"""
