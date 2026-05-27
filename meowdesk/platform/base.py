@@ -104,6 +104,21 @@ class PlatformWindow(ABC):
         """设置文件拖出回调"""
         self.on_drag_exit_callback = callback
 
+    @staticmethod
+    def check_directory_writable(dir_path: str) -> bool:
+        """检查目录是否可写"""
+        import os
+        if not os.path.exists(dir_path):
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+            except OSError:
+                return False
+        return os.access(dir_path, os.W_OK)
+
+    def request_directory_access(self, dir_path: str) -> bool:
+        """请求目录访问权限（macOS 专用）"""
+        return self.check_directory_writable(dir_path)
+
     @abstractmethod
     def run(self):
         """运行事件循环"""

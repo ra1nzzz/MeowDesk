@@ -74,9 +74,8 @@ def main():
     print(f"加载配置: {config_file}")
     config = ConfigManager(config_file)
     
-    # 数据库文件
-    archive_dir = config.get('archive_dir')
-    db_file = os.path.join(archive_dir, '.filedb.json')
+    # 数据库文件（放在应用目录，而非归档目录，避免归档目录不可写导致 DB 无法创建）
+    db_file = os.path.join(app_dir, '.filedb.json')
     print(f"数据库: {db_file}")
     db = FileDatabase(db_file)
     

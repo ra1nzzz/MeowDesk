@@ -6,6 +6,7 @@ macOS 平台实现 - 使用 PyObjC 实现透明窗口
 """
 
 import sys
+import os
 from typing import Tuple, Optional, List
 from PIL import Image
 import io
@@ -42,6 +43,8 @@ else:
 
 
 if MACOS_AVAILABLE:
+
+    from Cocoa import NSOpenPanel
 
     class MeowNSWindow(NSWindow):
 
@@ -391,6 +394,8 @@ class MacOSWindow(PlatformWindow):
         if not self.window:
             return
         frame = self.window.frame()
+        # 保持底部固定，让气泡向上扩展
+        # macOS 坐标系 origin.y 是窗口底部，保持不变即可让气泡向上生长
         new_frame = NSMakeRect(
             frame.origin.x,
             frame.origin.y,
@@ -436,6 +441,103 @@ class MacOSWindow(PlatformWindow):
         if self.view:
             self.view.registerForDraggedTypes_([NSFilenamesPboardType, "public.file-url"])
             print("✅ macOS 拖放已启用")
+
+    @staticmethod
+    def check_directory_writable(dir_path: str) -> bool:
+        if not os.path.exists(dir_path):
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+            except OSError:
+                return False
+        test_file = os.path.join(dir_path, '.meowdesk_write_test')
+        try:
+            with open(test_file, 'w') as f:
+                f.write('test')
+            os.remove(test_file)
+            return True
+        except (PermissionError, OSError):
+            return False
+
+    def request_directory_access(self, dir_path: str) -> bool:
+        try:
+            import subprocess
+
+            self.config_archive_dir = dir_path
+
+            python_app_path = self._find_python_app()
+
+            if python_app_path:
+                subprocess.Popen(['open', '-R', python_app_path])
+                self._open_full_disk_access_settings()
+                self._show_fda_alert(python_app_path)
+                return self._wait_for_permission()
+            else:
+                self._open_full_disk_access_settings()
+                return False
+
+        except Exception as e:
+            print(f"请求目录访问失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def _show_fda_alert(self, python_app_path: str):
+        try:
+            from Cocoa import NSAlert, NSAlertStyleInformational, NSAlertFirstButtonReturn
+            alert = NSAlert.alloc().init()
+            alert.setMessageText_("需要完全磁盘访问权限")
+            alert.setInformativeText_(
+                "无法写入归档目录，需要授予 Python 完全磁盘访问权限。\n\n"
+                "操作步骤：\n"
+                "1. 在已打开的系统设置中，点击「+」按钮\n"
+                "2. 在弹出的 Finder 窗口中选择已高亮的 Python.app\n"
+                "3. 点击「打开」并输入密码确认\n\n"
+                "添加完成后点击下方「已添加」按钮。"
+            )
+            alert.alertStyle = NSAlertStyleInformational
+            alert.addButtonWithTitle_("已添加，继续")
+            alert.addButtonWithTitle_("取消")
+            response = alert.runModal()
+            if response == NSAlertFirstButtonReturn:
+                return
+        except Exception:
+            pass
+
+    def _wait_for_permission(self) -> bool:
+        archive_dir = self.config_archive_dir if hasattr(self, 'config_archive_dir') else None
+        if archive_dir:
+            return self.check_directory_writable(archive_dir)
+        return False
+
+    @staticmethod
+    def _find_python_app():
+        exec_path = os.path.abspath(sys.executable)
+        version_dir = os.path.dirname(os.path.dirname(exec_path))
+        python_app = os.path.join(version_dir, 'Resources', 'Python.app')
+        if os.path.exists(python_app):
+            return python_app
+
+        import glob
+        ver = '.'.join(str(x) for x in sys.version_info[:2])
+        pattern = f'/Library/Frameworks/Python.framework/Versions/{ver}/Resources/Python.app'
+        if os.path.exists(pattern):
+            return pattern
+
+        apps = glob.glob('/Library/Frameworks/Python.framework/Versions/*/Resources/Python.app')
+        if apps:
+            return max(apps)
+
+        return None
+
+    @staticmethod
+    def _open_full_disk_access_settings():
+        try:
+            subprocess.Popen([
+                'open', 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles'
+            ])
+            print("已打开系统设置 → 隐私与安全性 → 完全磁盘访问权限")
+        except Exception as e:
+            print(f"打开系统设置失败: {e}")
 
     def get_screen_size(self) -> Tuple[int, int]:
         if NSScreen.mainScreen():
