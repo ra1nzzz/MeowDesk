@@ -74,8 +74,11 @@ def fmt_size(sz):
 
 
 def main():
-    with open(DB_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    if not os.path.exists(DB_FILE):
+        data = []
+    else:
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
     records = sorted(data, key=lambda r: r.get("timestamp", ""), reverse=True)
     total_size = sum(r.get("file_size", 0) for r in records)
     cats = {}
@@ -256,7 +259,7 @@ def main():
         '  wrap.querySelector("button").textContent="加载更多 ("+rem+" 条)";\n'
         '}\n'
         'function openArchiveDir(){\n'
-        '  try{new ActiveXObject("Shell.Application").Open("' + ARCHIVE_URL + '")}catch(e){alert("请手动打开: ' + ARCHIVE_DIR + '")}\n'
+        '  try{if(typeof ActiveXObject!=="undefined"){new ActiveXObject("Shell.Application").Open("' + ARCHIVE_URL + '")}else{alert("归档目录: ' + ARCHIVE_DIR.replace("\\", "\\\\") + '")}}catch(e){alert("请手动打开: ' + ARCHIVE_DIR.replace("\\", "\\\\") + '")}\n'
         '}\n'
         'document.addEventListener("DOMContentLoaded",function(){\n'
         '  document.querySelectorAll(".stat-card").forEach(function(card){\n'
@@ -275,6 +278,7 @@ def main():
     )
 
     out = os.path.join(ARCHIVE_DIR, "index.html")
+    os.makedirs(ARCHIVE_DIR, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)
     print("Generated: %s (%d bytes, %d rows)" % (out, len(html), len(records)))
