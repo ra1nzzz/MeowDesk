@@ -391,6 +391,8 @@ class MacOSWindow(PlatformWindow):
         if not self.window:
             return
         frame = self.window.frame()
+        # 保持底部固定，让气泡向上扩展
+        # macOS 坐标系 origin.y 是窗口底部，保持不变即可让气泡向上生长
         new_frame = NSMakeRect(
             frame.origin.x,
             frame.origin.y,
