@@ -225,10 +225,24 @@ class MeowWindow:
 
         self._wander_tick()
 
+        self._check_reminders()
+
         frame = self.animation.get_frame(self.state, self.frame_index)
         if frame:
             if self.bubble_text and self.bubble_timer > 0:
                 frame = self._draw_bubble(frame, self.bubble_text)
+
+            fw, fh = frame.size
+            if fw != self.window_width or fh != self.window_height:
+                old_h = self.window_height
+                self.window_width = fw
+                self.window_height = fh
+                if self.platform_window:
+                    self.platform_window.set_size(fw, fh)
+                dy = fh - old_h
+                if dy != 0:
+                    x, y = self.platform_window.get_position()
+                    self.platform_window.set_position(x, y - dy)
 
             self.platform_window.render(frame)
 
@@ -502,13 +516,16 @@ class MeowWindow:
                 self.context_menu.show(x, y)
 
     def _show_macos_context_menu(self):
+        if hasattr(self, 'macos_timer') and self.macos_timer:
+            self.macos_timer.invalidate()
+
         menu_items = [
             ("📄 打开导航页", self._open_html),
             ("📁 打开归档目录", self._open_archive_dir),
             None,
             ("🧹 清理磁盘", self._clean_disk),
             ("📅 查看日期", self._check_date),
-            ("🎉 假期提醒", self._check_holidays),
+            ("🔔 定期提醒", self._check_reminders_now),
             ("💻 系统信息", self._system_info),
             None,
             ("⚙️ 设置", self._open_settings),
@@ -518,6 +535,9 @@ class MeowWindow:
         ]
 
         self.platform_window.show_context_menu(menu_items)
+
+        if hasattr(self, 'macos_timer') and hasattr(self, '_start_macos_animation'):
+            self._start_macos_animation()
 
     def _open_html(self):
         archive_dir = self.config.get('archive_dir')
@@ -582,17 +602,48 @@ class MeowWindow:
             self._show_bubble(msg, 80)
 
     def _open_settings(self):
-        config_file = os.path.join(
-            os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.getcwd(),
-            'config.json'
-        )
+        if sys.platform == 'darwin':
+            self._open_macos_settings()
+        else:
+            config_file = os.path.join(
+                os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.getcwd(),
+                'config.json'
+            )
 
-        if os.path.exists(config_file):
-            import subprocess
-            if sys.platform == 'darwin':
-                subprocess.Popen(['open', '-t', config_file])
-            elif sys.platform == 'win32':
-                os.startfile(config_file)
+            if os.path.exists(config_file):
+                import subprocess
+                if sys.platform == 'win32':
+                    os.startfile(config_file)
+
+    def _open_macos_settings(self):
+        try:
+            from .macos_settings import open_settings
+            open_settings(self.config.config_path, on_saved_callback=self._on_settings_saved)
+            self.config.config = self.config.load()
+            self._on_settings_saved()
+        except Exception as e:
+            print(f"打开设置面板失败: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _check_reminders_now(self):
+        reminders = self.config.get('reminders', [])
+        if not reminders:
+            self._show_bubble("暂无提醒，在设置中添加", 80)
+            return
+        now = datetime.now()
+        current_time = now.strftime('%H:%M')
+        next_reminder = None
+        for r in reminders:
+            if r.get('enabled', True) and r.get('time', '') >= current_time:
+                next_reminder = r
+                break
+        if next_reminder:
+            name = next_reminder.get('name', '提醒')
+            t = next_reminder.get('time', '')
+            self._show_bubble(f"下一提醒: {name} ({t})", 80)
+        else:
+            self._show_bubble(f"今日 {len(reminders)} 个提醒已完成", 80)
 
     def _show_about(self):
         from .. import __version__
