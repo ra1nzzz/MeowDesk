@@ -37,15 +37,17 @@ from datetime import datetime
 config = ConfigProxy(config_path)
 
 COLORS = {
-    'bg': '#1a1d27',
-    'fg': '#e2e8f0',
-    'entry_bg': '#242837',
-    'accent': '#6366f1',
-    'accent_hover': '#818cf8',
-    'danger': '#ef4444',
-    'success': '#22c55e',
-    'warning': '#f59e0b',
-    'border': '#374151',
+    'bg': '#1e1e2e',
+    'fg': '#cdd6f4',
+    'entry_bg': '#313244',
+    'accent': '#89b4fa',
+    'accent_hover': '#b4d0fb',
+    'danger': '#f38ba8',
+    'success': '#a6e3a1',
+    'warning': '#f9e2af',
+    'border': '#45475a',
+    'select_bg': '#585b70',
+    'select_indicator': '#89b4fa',
 }
 
 FONT = 'PingFang SC'
@@ -70,6 +72,18 @@ style.configure('TNotebook.Tab',
                padding=[12, 4],
                font=(FONT, 9))
 style.map('TNotebook.Tab',
+         background=[('selected', COLORS['accent'])],
+         foreground=[('selected', '#ffffff')])
+style.configure('Treeview',
+               background=COLORS['entry_bg'],
+               foreground=COLORS['fg'],
+               fieldbackground=COLORS['entry_bg'],
+               font=(FONT, 9))
+style.configure('Treeview.Heading',
+               background=COLORS['select_bg'],
+               foreground=COLORS['fg'],
+               font=(FONT, 9, 'bold'))
+style.map('Treeview',
          background=[('selected', COLORS['accent'])],
          foreground=[('selected', '#ffffff')])
 
@@ -140,14 +154,14 @@ ss_frame.grid(row=row, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4))
 
 tk.Radiobutton(ss_frame, text="移入回收站", variable=ss_var, value="recycle",
                bg=COLORS['bg'], fg=COLORS['fg'],
-               selectcolor=COLORS['bg'], activebackground=COLORS['bg'],
+               selectcolor=COLORS['select_indicator'], activebackground=COLORS['select_bg'],
                activeforeground=COLORS['fg'],
-               font=(FONT, 10)).pack(side="left", padx=(0, 20))
+               font=(FONT, 10), indicatoron=True).pack(side="left", padx=(0, 20))
 tk.Radiobutton(ss_frame, text="保留到图片", variable=ss_var, value="archive",
                bg=COLORS['bg'], fg=COLORS['fg'],
-               selectcolor=COLORS['bg'], activebackground=COLORS['bg'],
+               selectcolor=COLORS['select_indicator'], activebackground=COLORS['select_bg'],
                activeforeground=COLORS['fg'],
-               font=(FONT, 10)).pack(side="left")
+               font=(FONT, 10), indicatoron=True).pack(side="left")
 
 # === AI 助手 TAB ===
 tab_ai = tk.Frame(notebook, bg=COLORS['bg'])
@@ -158,9 +172,9 @@ row = 0
 ai_enabled_var = tk.BooleanVar(value=config.get('ai_enabled', False))
 tk.Checkbutton(tab_ai, text="启用 AI 助手", variable=ai_enabled_var,
               bg=COLORS['bg'], fg=COLORS['fg'],
-              selectcolor=COLORS['bg'], activebackground=COLORS['bg'],
+              selectcolor=COLORS['select_indicator'], activebackground=COLORS['select_bg'],
               activeforeground=COLORS['fg'],
-              font=(FONT, 10, "bold")).grid(row=row, column=0, sticky="w", padx=20, pady=(20, 8))
+              font=(FONT, 10, "bold"), indicatoron=True).grid(row=row, column=0, sticky="w", padx=20, pady=(20, 8))
 row += 1
 
 tk.Label(tab_ai, text="网关类型", bg=COLORS['bg'], fg=COLORS['fg'],
@@ -174,9 +188,9 @@ type_frame.grid(row=row, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4
 for value, text in [('openclaw', 'OpenClaw'), ('hermes', 'Hermes'), ('custom', '自定义')]:
     tk.Radiobutton(type_frame, text=text, variable=agent_type_var, value=value,
                   bg=COLORS['bg'], fg=COLORS['fg'],
-                  selectcolor=COLORS['bg'], activebackground=COLORS['bg'],
+                  selectcolor=COLORS['select_indicator'], activebackground=COLORS['select_bg'],
                   activeforeground=COLORS['fg'],
-                  font=(FONT, 10)).pack(side="left", padx=(0, 16))
+                  font=(FONT, 10), indicatoron=True).pack(side="left", padx=(0, 16))
 row += 1
 
 tk.Label(tab_ai, text="网关地址", bg=COLORS['bg'], fg=COLORS['fg'],
@@ -323,9 +337,9 @@ def add_reminder():
 
     enabled_var = tk.BooleanVar(value=True)
     tk.Checkbutton(dialog, text="启用提醒", variable=enabled_var,
-                  bg=COLORS['bg'], fg=COLORS['fg'], selectcolor=COLORS['bg'],
-                  activebackground=COLORS['bg'], activeforeground=COLORS['fg'],
-                  font=(FONT, 10)).grid(row=r, column=0, sticky="w", padx=20, pady=(8, 4))
+                  bg=COLORS['bg'], fg=COLORS['fg'], selectcolor=COLORS['select_indicator'],
+                  activebackground=COLORS['select_bg'], activeforeground=COLORS['fg'],
+                  font=(FONT, 10), indicatoron=True).grid(row=r, column=0, sticky="w", padx=20, pady=(8, 4))
     r += 1
 
     def ok():
@@ -395,6 +409,10 @@ def save():
     config.set('agent_token', token_var.get().strip())
     config.set('agent_timeout', timeout_var.get())
     config.save()
+    import tempfile
+    marker = os.path.join(tempfile.gettempdir(), '.meowdesk_settings_saved')
+    with open(marker, 'w') as mf:
+        mf.write('saved')
     messagebox.showinfo("设置", "设置已保存！")
     root.destroy()
 
