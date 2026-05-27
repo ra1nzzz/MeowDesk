@@ -131,18 +131,40 @@ if MACOS_AVAILABLE:
         def mouseDown_(self, event):
             self.window().makeKeyWindow()
 
-            if event.modifierFlags() & 0x40000:
-                if self.window_ref and self.window_ref.on_right_click_callback:
-                    mouse_loc = NSEvent.mouseLocation()
-                    screen_height = NSScreen.mainScreen().frame().size.height
-                    x = int(mouse_loc.x)
-                    y = int(screen_height - mouse_loc.y)
-                    self.window_ref.on_right_click_callback(x, y)
+            # Ctrl+Click = 右键 (macOS 习惯)
+            if event.modifierFlags() & 0x40000:  # Control key
+                self._handle_right_click()
                 return
 
+            # 普通点击
             if self.window_ref and self.window_ref.on_click_callback:
                 self.window_ref.on_click_callback()
 
+            # 拖动处理
+            self._handle_drag(event)
+
+        def mouseUp_(self, event):
+            pass
+
+        def rightMouseDown_(self, event):
+            self.window().makeKeyWindow()
+            self._handle_right_click()
+
+        def otherMouseDown_(self, event):
+            self.window().makeKeyWindow()
+            self._handle_right_click()
+
+        def _handle_right_click(self):
+            """统一的右键处理"""
+            if self.window_ref and self.window_ref.on_right_click_callback:
+                mouse_loc = NSEvent.mouseLocation()
+                screen_height = NSScreen.mainScreen().frame().size.height
+                x = int(mouse_loc.x)
+                y = int(screen_height - mouse_loc.y)
+                self.window_ref.on_right_click_callback(x, y)
+
+        def _handle_drag(self, event):
+            """统一的拖动处理"""
             last_screen_loc = NSEvent.mouseLocation()
             has_dragged = False
 
@@ -162,7 +184,7 @@ if MACOS_AVAILABLE:
                     if not has_dragged:
                         has_dragged = True
                         self._is_dragging = True
-                        if self.window_ref and hasattr(self.window_ref, 'on_drag_start_callback') and self.window_ref.on_drag_start_callback:
+                        if self.window_ref and self.window_ref.on_drag_start_callback:
                             self.window_ref.on_drag_start_callback()
 
                     current_screen_loc = NSEvent.mouseLocation()
@@ -178,35 +200,9 @@ if MACOS_AVAILABLE:
 
             if has_dragged:
                 self._is_dragging = False
-                if self.window_ref and hasattr(self.window_ref, 'on_drag_end_callback') and self.window_ref.on_drag_end_callback:
+                if self.window_ref and self.window_ref.on_drag_end_callback:
                     x, y = self.window_ref.get_position()
                     self.window_ref.on_drag_end_callback(x, y)
-
-            if self.window_ref:
-                x, y = self.window_ref.get_position()
-                if self.window_ref.on_position_changed:
-                    self.window_ref.on_position_changed(x, y)
-
-        def mouseUp_(self, event):
-            pass
-
-        def rightMouseDown_(self, event):
-            self.window().makeKeyWindow()
-            if self.window_ref and self.window_ref.on_right_click_callback:
-                mouse_loc = NSEvent.mouseLocation()
-                screen_height = NSScreen.mainScreen().frame().size.height
-                x = int(mouse_loc.x)
-                y = int(screen_height - mouse_loc.y)
-                self.window_ref.on_right_click_callback(x, y)
-
-        def otherMouseDown_(self, event):
-            self.window().makeKeyWindow()
-            if self.window_ref and self.window_ref.on_right_click_callback:
-                mouse_loc = NSEvent.mouseLocation()
-                screen_height = NSScreen.mainScreen().frame().size.height
-                x = int(mouse_loc.x)
-                y = int(screen_height - mouse_loc.y)
-                self.window_ref.on_right_click_callback(x, y)
 
         def acceptsFirstResponder(self):
             return True
@@ -278,6 +274,7 @@ class MacOSWindow(PlatformWindow):
         self.on_mouse_exit_callback = None
         self.on_drag_start_callback = None
         self.on_drag_end_callback = None
+        self._ns_image_cache = {}  # 缓存 NSImage
 
     def create(self):
         self.app = NSApplication.sharedApplication()
@@ -364,8 +361,14 @@ class MacOSWindow(PlatformWindow):
         self.height = new_h
 
     def _pil_to_nsimage(self, pil_image: Image.Image):
+        """将 PIL 图像转换为 NSImage（带缓存）"""
         if pil_image.mode != 'RGBA':
             pil_image = pil_image.convert('RGBA')
+
+        # 使用图像数据的哈希作为缓存键
+        img_hash = hash(pil_image.tobytes())
+        if img_hash in self._ns_image_cache:
+            return self._ns_image_cache[img_hash]
 
         img_buffer = io.BytesIO()
         pil_image.save(img_buffer, format='PNG')
@@ -374,6 +377,11 @@ class MacOSWindow(PlatformWindow):
         from Foundation import NSData
         ns_data = NSData.dataWithBytes_length_(img_data, len(img_data))
         ns_image = NSImage.alloc().initWithData_(ns_data)
+
+        # 缓存（限制大小）
+        if len(self._ns_image_cache) > 10:
+            self._ns_image_cache.pop(next(iter(self._ns_image_cache)))
+        self._ns_image_cache[img_hash] = ns_image
 
         return ns_image
 
