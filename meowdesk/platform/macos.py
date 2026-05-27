@@ -460,16 +460,25 @@ class MacOSWindow(PlatformWindow):
 
     def request_directory_access(self, dir_path: str) -> bool:
         try:
+            from Foundation import NSURL
+            import subprocess
+
+            python_path = sys.executable
+
             panel = NSOpenPanel.openPanel()
-            panel.setTitle_("MeowDesk 需要访问归档目录")
-            panel.setPrompt_("授权访问")
+            panel.setTitle_("MeowDesk - 授权归档目录")
+            panel.setPrompt_("选择并授权")
+            panel.setMessage_(
+                "如果无法写入归档目录，请将 Python 添加到系统设置的「完全磁盘访问权限」中。\n\n"
+                "路径: " + python_path + "\n\n"
+                "点击下方按钮可直接打开系统设置。"
+            )
             panel.setCanChooseFiles_(False)
             panel.setCanChooseDirectories_(True)
             panel.setAllowsMultipleSelection_(False)
             panel.setShowsHiddenFiles_(True)
 
             if os.path.exists(dir_path):
-                from Foundation import NSURL
                 url = NSURL.fileURLWithPath_(dir_path)
                 panel.setDirectoryURL_(url)
 
@@ -479,15 +488,22 @@ class MacOSWindow(PlatformWindow):
                 selected_url = panel.URLs()[0]
                 selected_path = str(selected_url.path())
 
-                access_granted, error = selected_url.startAccessingSecurityScopedResource()
-                if access_granted:
+                try:
+                    selected_url.startAccessingSecurityScopedResource()
+                except Exception:
+                    pass
+
+                if self.check_directory_writable(selected_path):
                     print(f"✅ 已获取目录访问权限: {selected_path}")
+                    if selected_path != dir_path:
+                        print(f"  用户选择了新目录: {selected_path}")
                     return True
                 else:
-                    print(f"⚠️ 安全作用域访问失败: {error}")
+                    print("⚠️ 选择目录后仍无法写入，尝试打开系统设置")
+                    self._open_full_disk_access_settings()
                     return False
             else:
-                print("用户取消了目录授权")
+                self._open_full_disk_access_settings()
                 return False
 
         except Exception as e:
@@ -495,6 +511,16 @@ class MacOSWindow(PlatformWindow):
             import traceback
             traceback.print_exc()
             return False
+
+    @staticmethod
+    def _open_full_disk_access_settings():
+        try:
+            subprocess.Popen([
+                'open', 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles'
+            ])
+            print("已打开系统设置 → 隐私与安全性 → 完全磁盘访问权限")
+        except Exception as e:
+            print(f"打开系统设置失败: {e}")
 
     def get_screen_size(self) -> Tuple[int, int]:
         if NSScreen.mainScreen():
