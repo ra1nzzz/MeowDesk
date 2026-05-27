@@ -133,7 +133,11 @@ if MACOS_AVAILABLE:
 
             if event.modifierFlags() & 0x40000:
                 if self.window_ref and self.window_ref.on_right_click_callback:
-                    self.window_ref.on_right_click_callback()
+                    mouse_loc = NSEvent.mouseLocation()
+                    screen_height = NSScreen.mainScreen().frame().size.height
+                    x = int(mouse_loc.x)
+                    y = int(screen_height - mouse_loc.y)
+                    self.window_ref.on_right_click_callback(x, y)
                 return
 
             if self.window_ref and self.window_ref.on_click_callback:
@@ -175,7 +179,8 @@ if MACOS_AVAILABLE:
             if has_dragged:
                 self._is_dragging = False
                 if self.window_ref and hasattr(self.window_ref, 'on_drag_end_callback') and self.window_ref.on_drag_end_callback:
-                    self.window_ref.on_drag_end_callback()
+                    x, y = self.window_ref.get_position()
+                    self.window_ref.on_drag_end_callback(x, y)
 
             if self.window_ref:
                 x, y = self.window_ref.get_position()
@@ -188,12 +193,20 @@ if MACOS_AVAILABLE:
         def rightMouseDown_(self, event):
             self.window().makeKeyWindow()
             if self.window_ref and self.window_ref.on_right_click_callback:
-                self.window_ref.on_right_click_callback()
+                mouse_loc = NSEvent.mouseLocation()
+                screen_height = NSScreen.mainScreen().frame().size.height
+                x = int(mouse_loc.x)
+                y = int(screen_height - mouse_loc.y)
+                self.window_ref.on_right_click_callback(x, y)
 
         def otherMouseDown_(self, event):
             self.window().makeKeyWindow()
             if self.window_ref and self.window_ref.on_right_click_callback:
-                self.window_ref.on_right_click_callback()
+                mouse_loc = NSEvent.mouseLocation()
+                screen_height = NSScreen.mainScreen().frame().size.height
+                x = int(mouse_loc.x)
+                y = int(screen_height - mouse_loc.y)
+                self.window_ref.on_right_click_callback(x, y)
 
         def acceptsFirstResponder(self):
             return True
@@ -402,6 +415,10 @@ class MacOSWindow(PlatformWindow):
 
     def on_drag_end(self, callback):
         self.on_drag_end_callback = callback
+
+    def set_size(self, width: int, height: int):
+        if self.window:
+            self._resize_window(width, height)
 
     def run(self):
         if self.app:
