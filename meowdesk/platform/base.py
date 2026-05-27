@@ -96,6 +96,14 @@ class PlatformWindow(ABC):
         """设置拖动结束回调，参数为 (x, y)"""
         self.on_drag_end_callback = callback
 
+    def on_drag_enter(self, callback: Callable):
+        """设置文件拖入回调"""
+        self.on_drag_enter_callback = callback
+
+    def on_drag_exit(self, callback: Callable):
+        """设置文件拖出回调"""
+        self.on_drag_exit_callback = callback
+
     @abstractmethod
     def run(self):
         """运行事件循环"""
