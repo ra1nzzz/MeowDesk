@@ -52,9 +52,11 @@ class CommandRegistry:
         # 磁盘清理
         @self.register_command('clean_disk')
         def clean_disk(params):
+            # 安全的临时目录清理 - 只清理超过7天的文件
+            import time
+            
             if sys.platform == 'darwin':
                 temp_dirs = [
-                    '/tmp',
                     os.path.expanduser('~/Library/Caches'),
                     os.path.expanduser('~/Library/Logs'),
                 ]
@@ -72,28 +74,52 @@ class CommandRegistry:
             
             cleaned_size = 0
             cleaned_files = 0
+            max_age_days = 7  # 只清理超过7天的文件
+            max_age_seconds = max_age_days * 24 * 3600
+            now = time.time()
+            
+            # 保护的文件/目录名
+            protected_names = {
+                'MeowDesk', 'meowdesk', 'logs', '.git', 
+                'node_modules', '__pycache__', '.vscode'
+            }
             
             for temp_dir in temp_dirs:
                 if not temp_dir or not os.path.exists(temp_dir):
                     continue
                 
+                # 跳过不存在或无权限的目录
+                if not os.access(temp_dir, os.R_OK | os.W_OK):
+                    continue
+                
                 try:
                     for item in os.listdir(temp_dir):
+                        # 跳过保护的名称
+                        if item in protected_names or item.startswith('.'):
+                            continue
+                            
                         item_path = os.path.join(temp_dir, item)
                         try:
+                            # 检查文件年龄
+                            stat = os.stat(item_path)
+                            if now - stat.st_mtime < max_age_seconds:
+                                continue  # 跳过新文件
+                            
                             if os.path.isfile(item_path):
                                 size = os.path.getsize(item_path)
                                 os.remove(item_path)
                                 cleaned_size += size
                                 cleaned_files += 1
                             elif os.path.isdir(item_path):
-                                size = self._get_dir_size(item_path)
-                                shutil.rmtree(item_path)
-                                cleaned_size += size
-                                cleaned_files += 1
-                        except Exception:
+                                # 只清理空目录或临时目录
+                                if item.startswith(('tmp', 'Temp', 'cache')):
+                                    size = self._get_dir_size(item_path)
+                                    shutil.rmtree(item_path)
+                                    cleaned_size += size
+                                    cleaned_files += 1
+                        except (PermissionError, OSError):
                             continue
-                except Exception:
+                except (PermissionError, OSError):
                     continue
             
             return {

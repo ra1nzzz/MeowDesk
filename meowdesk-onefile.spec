@@ -1,16 +1,29 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Single file mode (--onefile): All dependencies packed into one exe
+# MeowDesk v1.4.0 - New modular architecture
 
 a = Analysis(
-    ['lingxi_droplet.py'],
+    ['meowdesk_main.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets', 'assets'), ('_gen_html.py', '.'), ('_locate.py', '.'), ('config.json', '.'), ('filedb.json', '.'), ('index_preview.html', '.'), ('README.md', '.')],
-    hiddenimports=[],
+    datas=[
+        ('assets', 'assets'),
+        ('meowdesk', 'meowdesk'),
+        ('_gen_html.py', '.'),
+        ('_locate.py', '.'),
+        ('config.json', '.'),
+        ('README.md', '.'),
+    ],
+    hiddenimports=[
+        'meowdesk.core',
+        'meowdesk.agent',
+        'meowdesk.platform',
+        'meowdesk.ui',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['numpy'],
+    excludes=['numpy', 'matplotlib', 'scipy', 'pandas'],
     noarchive=False,
     optimize=0,
 )

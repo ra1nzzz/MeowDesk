@@ -4,14 +4,22 @@
 
 import os
 import sys
+import webbrowser
+import subprocess
 from typing import Optional, Callable
 
 
 class SystemTray:
     """系统托盘图标"""
     
-    def __init__(self, icon_path: str, on_quit_callback: Optional[Callable] = None):
+    def __init__(self, icon_path: str, config=None, 
+                 on_show_callback: Optional[Callable] = None,
+                 on_hide_callback: Optional[Callable] = None,
+                 on_quit_callback: Optional[Callable] = None):
         self.icon_path = icon_path
+        self.config = config
+        self.on_show_callback = on_show_callback
+        self.on_hide_callback = on_hide_callback
         self.on_quit_callback = on_quit_callback
         self.tray_icon = None
         
@@ -114,24 +122,36 @@ class SystemTray:
                 self.tray_icon.stop()
     
     def _open_html(self):
-        """打开 HTML"""
-        # TODO: 实现
-        pass
+        """打开 HTML 导航页"""
+        archive_dir = self.config.get('archive_dir') if self.config else 'D:\\meow-file'
+        html_file = os.path.join(archive_dir, 'index.html')
+        if os.path.exists(html_file):
+            webbrowser.open(f'file:///{html_file}')
+        else:
+            print(f"HTML 文件不存在: {html_file}")
     
     def _open_archive(self):
         """打开归档目录"""
-        # TODO: 实现
-        pass
+        archive_dir = self.config.get('archive_dir') if self.config else 'D:\\meow-file'
+        if os.path.exists(archive_dir):
+            if sys.platform == 'win32':
+                os.startfile(archive_dir)
+            elif sys.platform == 'darwin':
+                subprocess.Popen(['open', archive_dir])
+            else:
+                subprocess.Popen(['xdg-open', archive_dir])
+        else:
+            print(f"归档目录不存在: {archive_dir}")
     
     def _show_window(self):
         """显示窗口"""
-        # TODO: 实现
-        pass
+        if self.on_show_callback:
+            self.on_show_callback()
     
     def _hide_window(self):
         """隐藏窗口"""
-        # TODO: 实现
-        pass
+        if self.on_hide_callback:
+            self.on_hide_callback()
     
     def _quit(self):
         """退出"""
