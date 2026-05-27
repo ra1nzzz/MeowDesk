@@ -116,7 +116,14 @@ if MACOS_AVAILABLE:
                 self.window_ref.on_mouse_exit_callback()
 
         def draggingEntered_(self, sender):
-            return NSDragOperationCopy
+            if self.window_ref and self.window_ref.on_drop_callback:
+                return NSDragOperationCopy
+            return 0
+
+        def draggingUpdated_(self, sender):
+            if self.window_ref and self.window_ref.on_drop_callback:
+                return NSDragOperationCopy
+            return 0
 
         def performDragOperation_(self, sender):
             pasteboard = sender.draggingPasteboard()
@@ -125,7 +132,16 @@ if MACOS_AVAILABLE:
             if files and self.window_ref and self.window_ref.on_drop_callback:
                 file_list = list(files)
                 self.window_ref.on_drop_callback(file_list)
+                return True
+            return False
 
+        def concludeDragOperation_(self, sender):
+            pass
+
+        def wantsPeriodicDraggingUpdates_(self, sender):
+            return False
+
+        def prepareForDragOperation_(self, sender):
             return True
 
         def mouseDown_(self, event):
