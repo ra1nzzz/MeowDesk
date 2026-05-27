@@ -74,6 +74,8 @@ if MACOS_AVAILABLE:
                 self.animation_callback = None
                 self._menu_handlers = []
                 self._is_dragging = False
+                self.on_drag_enter_callback = None
+                self.on_drag_exit_callback = None
             return self
 
         def setImage_(self, image):
@@ -116,16 +118,56 @@ if MACOS_AVAILABLE:
                 self.window_ref.on_mouse_exit_callback()
 
         def draggingEntered_(self, sender):
-            return NSDragOperationCopy
+            if self.window_ref and self.window_ref.on_drop_callback:
+                if self.on_drag_enter_callback:
+                    self.on_drag_enter_callback()
+                return NSDragOperationCopy
+            return 0
+
+        def draggingUpdated_(self, sender):
+            if self.window_ref and self.window_ref.on_drop_callback:
+                return NSDragOperationCopy
+            return 0
+
+        def draggingExited_(self, sender):
+            if self.on_drag_exit_callback:
+                self.on_drag_exit_callback()
 
         def performDragOperation_(self, sender):
             pasteboard = sender.draggingPasteboard()
             files = pasteboard.propertyListForType_(NSFilenamesPboardType)
 
-            if files and self.window_ref and self.window_ref.on_drop_callback:
-                file_list = list(files)
-                self.window_ref.on_drop_callback(file_list)
+            if not files:
+                url_items = pasteboard.propertyListForType_("public.file-url")
+                if url_items:
+                    from Foundation import NSURL
+                    files = []
+                    for item in url_items:
+                        if isinstance(item, str):
+                            url = NSURL.URLWithString_(item)
+                            if url:
+                                path = url.path()
+                                if path:
+                                    files.append(path)
+                        elif hasattr(item, 'path'):
+                            path = item.path()
+                            if path:
+                                files.append(path)
 
+            if files and self.window_ref and self.window_ref.on_drop_callback:
+                file_list = [str(f) for f in files if f]
+                if file_list:
+                    self.window_ref.on_drop_callback(file_list)
+                    return True
+            return False
+
+        def concludeDragOperation_(self, sender):
+            pass
+
+        def wantsPeriodicDraggingUpdates_(self, sender):
+            return False
+
+        def prepareForDragOperation_(self, sender):
             return True
 
         def mouseDown_(self, event):
@@ -351,7 +393,7 @@ class MacOSWindow(PlatformWindow):
         frame = self.window.frame()
         new_frame = NSMakeRect(
             frame.origin.x,
-            frame.origin.y + (frame.size.height - new_h),
+            frame.origin.y,
             new_w,
             new_h
         )
@@ -392,7 +434,7 @@ class MacOSWindow(PlatformWindow):
 
     def enable_drag_drop(self):
         if self.view:
-            self.view.registerForDraggedTypes_([NSFilenamesPboardType])
+            self.view.registerForDraggedTypes_([NSFilenamesPboardType, "public.file-url"])
             print("✅ macOS 拖放已启用")
 
     def get_screen_size(self) -> Tuple[int, int]:
@@ -423,6 +465,14 @@ class MacOSWindow(PlatformWindow):
 
     def on_drag_end(self, callback):
         self.on_drag_end_callback = callback
+
+    def on_drag_enter(self, callback):
+        if self.view:
+            self.view.on_drag_enter_callback = callback
+
+    def on_drag_exit(self, callback):
+        if self.view:
+            self.view.on_drag_exit_callback = callback
 
     def set_size(self, width: int, height: int):
         if self.window:

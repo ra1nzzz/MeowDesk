@@ -104,6 +104,10 @@ class MeowWindow:
             self.platform_window.on_mouse_enter(self._on_mouse_enter)
         if hasattr(self.platform_window, 'on_mouse_exit'):
             self.platform_window.on_mouse_exit(self._on_mouse_exit)
+        if hasattr(self.platform_window, 'on_drag_enter'):
+            self.platform_window.on_drag_enter(self._on_drag_enter)
+        if hasattr(self.platform_window, 'on_drag_exit'):
+            self.platform_window.on_drag_exit(self._on_drag_exit)
 
         # 移动到保存的位置
         self._move_to_saved_position()
@@ -219,7 +223,12 @@ class MeowWindow:
         if sys.platform != 'darwin':
             return
 
-        from Foundation import NSTimer
+        from Foundation import NSTimer, NSRunLoop
+        from AppKit import NSEventTrackingRunLoopMode
+
+        if hasattr(self, 'macos_timer') and self.macos_timer:
+            self.macos_timer.invalidate()
+            self.macos_timer = None
 
         self.macos_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             0.08,
@@ -228,10 +237,19 @@ class MeowWindow:
             None,
             True
         )
+        NSRunLoop.currentRunLoop().addTimer_forMode_(
+            self.macos_timer, NSEventTrackingRunLoopMode
+        )
 
         self.platform_window.view.animation_callback = self._macos_animate
 
     def _macos_animate(self):
+        if sys.platform == 'darwin':
+            from .macos_settings import check_settings_saved
+            if check_settings_saved():
+                self.config.config = self.config.load()
+                self._on_settings_saved()
+
         self._update_state()
 
         self._wander_tick()
@@ -245,15 +263,10 @@ class MeowWindow:
 
             fw, fh = frame.size
             if fw != self.window_width or fh != self.window_height:
-                old_h = self.window_height
                 self.window_width = fw
                 self.window_height = fh
                 if self.platform_window:
                     self.platform_window.set_size(fw, fh)
-                dy = fh - old_h
-                if dy != 0:
-                    x, y = self.platform_window.get_position()
-                    self.platform_window.set_position(x, y - dy)
 
             self.platform_window.render(frame)
 
@@ -263,9 +276,6 @@ class MeowWindow:
 
     def _draw_bubble(self, frame: Image.Image, text: str) -> Image.Image:
         from PIL import ImageDraw, ImageFont
-
-        frame = frame.copy()
-        draw = ImageDraw.Draw(frame)
 
         font = None
         if sys.platform == 'darwin':
@@ -277,35 +287,61 @@ class MeowWindow:
             ]
             for fp in font_paths:
                 try:
-                    font = ImageFont.truetype(fp, 12)
+                    font = ImageFont.truetype(fp, 14)
                     break
                 except Exception:
                     continue
         if font is None:
             try:
-                font = ImageFont.truetype("msyh.ttc", 12)
+                font = ImageFont.truetype("msyh.ttc", 14)
             except Exception:
                 try:
-                    font = ImageFont.truetype("arial.ttf", 12)
+                    font = ImageFont.truetype("arial.ttf", 14)
                 except Exception:
                     font = ImageFont.load_default()
 
-        bbox = draw.textbbox((0, 0), text, font=font)
+        dummy_draw = ImageDraw.Draw(frame)
+        bbox = dummy_draw.textbbox((0, 0), text, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]
 
-        x = (frame.width - text_width) // 2
-        y = frame.height - text_height - 10
+        padding = 8
+        bubble_height = text_height + padding * 2
+        bubble_width = text_width + padding * 2 + 20
 
-        padding = 5
-        draw.rectangle(
-            [x - padding, y - padding, x + text_width + padding, y + text_height + padding],
-            fill=(0, 0, 0, 180)
+        new_width = max(frame.width, bubble_width)
+        new_height = frame.height + bubble_height + 8
+
+        new_frame = Image.new('RGBA', (new_width, new_height), (0, 0, 0, 0))
+
+        cat_x = (new_width - frame.width) // 2
+        new_frame.paste(frame, (cat_x, bubble_height + 8))
+
+        draw = ImageDraw.Draw(new_frame)
+
+        bubble_x = (new_width - bubble_width) // 2
+        bubble_y = 0
+
+        draw.rounded_rectangle(
+            [bubble_x, bubble_y, bubble_x + bubble_width, bubble_y + bubble_height],
+            radius=8,
+            fill=(30, 30, 50, 220),
+            outline=(100, 100, 180, 180),
+            width=1
         )
 
-        draw.text((x, y), text, fill=(255, 255, 255, 255), font=font)
+        text_x = bubble_x + padding + 10
+        text_y = bubble_y + padding
+        draw.text((text_x, text_y), text, fill=(255, 255, 255, 255), font=font)
 
-        return frame
+        arrow_cx = new_width // 2
+        arrow_top = bubble_y + bubble_height
+        draw.polygon(
+            [(arrow_cx - 6, arrow_top), (arrow_cx + 6, arrow_top), (arrow_cx, arrow_top + 8)],
+            fill=(30, 30, 50, 220)
+        )
+
+        return new_frame
 
     def _update_state(self):
         now = time.time()
@@ -325,8 +361,9 @@ class MeowWindow:
         if self.shy_timer > 0:
             self.shy_timer -= 1
             if self.shy_timer == 0 and self.state == AnimationManager.SHY:
-                self.state = AnimationManager.IDLE
-                self.frame_index = 0
+                if not self.dragging:
+                    self.state = AnimationManager.IDLE
+                    self.frame_index = 0
 
         if (not self.processing and
             self.state == AnimationManager.IDLE and
@@ -488,28 +525,36 @@ class MeowWindow:
     def _on_mouse_exit(self):
         pass
 
+    def _on_drag_enter(self):
+        if self.state not in (AnimationManager.RECEIVING, AnimationManager.CARRYING):
+            self.state = AnimationManager.SURPRISED
+            self.surprised_timer = 30
+            self.frame_index = 0
+
+    def _on_drag_exit(self):
+        if self.state == AnimationManager.SURPRISED and not self.processing:
+            self.state = AnimationManager.IDLE
+            self.frame_index = 0
+
     def _on_drag_start(self):
         """拖动开始事件"""
-        self._touch()
         self.dragging = True
+        self._touch()
 
-        # 拖动时切换到 SHY 状态
-        if self.state not in (AnimationManager.RECEIVING, AnimationManager.CARRYING, AnimationManager.SLEEPING):
+        if self.state not in (AnimationManager.RECEIVING, AnimationManager.CARRYING):
             self.state = AnimationManager.SHY
-            self.shy_timer = 300  # 长定时器，释放时清除
+            self.shy_timer = 300
             self.frame_index = 0
 
     def _on_drag_end(self, x: int, y: int):
         """拖动结束事件"""
         self.dragging = False
+        self._touch()
 
-        # 保存窗口位置
         self.config.set('window_position', [x, y])
 
-        # 恢复到 IDLE 状态
         if self.state == AnimationManager.SHY:
-            self.state = AnimationManager.IDLE
-            self.frame_index = 0
+            self.shy_timer = 40
 
     def _on_right_click(self, x: int = None, y: int = None):
         """右键菜单"""
@@ -527,9 +572,6 @@ class MeowWindow:
                 self.context_menu.show(x, y)
 
     def _show_macos_context_menu(self):
-        if hasattr(self, 'macos_timer') and self.macos_timer:
-            self.macos_timer.invalidate()
-
         menu_items = [
             ("📄 打开导航页", self._open_html),
             ("📁 打开归档目录", self._open_archive_dir),
@@ -547,18 +589,27 @@ class MeowWindow:
 
         self.platform_window.show_context_menu(menu_items)
 
-        if hasattr(self, 'macos_timer') and hasattr(self, '_start_macos_animation'):
-            self._start_macos_animation()
-
     def _open_html(self):
         archive_dir = self.config.get('archive_dir')
+
+        os.makedirs(archive_dir, exist_ok=True)
+
+        db_file = os.path.join(archive_dir, '.filedb.json')
+        if not os.path.exists(db_file):
+            import json
+            with open(db_file, 'w', encoding='utf-8') as f:
+                json.dump([], f)
+
         html_file = os.path.join(archive_dir, 'index.html')
+
+        if not os.path.exists(html_file):
+            self._update_html()
 
         if os.path.exists(html_file):
             import webbrowser
             webbrowser.open(f'file://{html_file}')
         else:
-            print(f"HTML 文件不存在: {html_file}")
+            self._show_bubble("导航页生成失败", 60)
 
     def _open_archive_dir(self):
         archive_dir = self.config.get('archive_dir')
@@ -629,9 +680,7 @@ class MeowWindow:
     def _open_macos_settings(self):
         try:
             from .macos_settings import open_settings
-            open_settings(self.config.config_path, on_saved_callback=self._on_settings_saved)
-            self.config.config = self.config.load()
-            self._on_settings_saved()
+            open_settings(self.config.config_path)
         except Exception as e:
             print(f"打开设置面板失败: {e}")
             import traceback
@@ -815,7 +864,11 @@ class MeowWindow:
         try:
             import importlib.util
 
-            app_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            if getattr(sys, 'frozen', False):
+                app_dir = os.path.dirname(sys.executable)
+            else:
+                app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
             gen_html_path = os.path.join(app_dir, '_gen_html.py')
 
             if os.path.exists(gen_html_path):
