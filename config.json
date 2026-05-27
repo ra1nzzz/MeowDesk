@@ -5,8 +5,8 @@
   "auto_open_html": false,
   "screenshot_action": "recycle",
   "window_position": [
-    1763,
-    417
+    1662,
+    346
   ],
   "categories": {
     "截图": {
@@ -148,5 +148,11 @@
       ],
       "action": "archive"
     }
-  }
+  },
+  "scale": 0.3,
+  "ai_enabled": false,
+  "agent_type": "openclaw",
+  "agent_endpoint": "http://localhost:8080",
+  "agent_token": "",
+  "agent_timeout": 30
 }
