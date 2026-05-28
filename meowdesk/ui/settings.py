@@ -101,7 +101,7 @@ class SettingsPanel:
         dir_frame = tk.Frame(tab, bg=self.COLORS['bg'])
         dir_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 4))
         
-        self.dir_var = tk.StringVar(value=self.config.get('archive_dir'))
+        self.dir_var = tk.StringVar(value=self.config.archive_dir)
         dir_entry = tk.Entry(dir_frame, textvariable=self.dir_var, bg=self.COLORS['entry_bg'],
                             fg=self.COLORS['fg'], insertbackground=self.COLORS['fg'],
                             relief="flat", font=("Microsoft YaHei", 10))
@@ -121,7 +121,7 @@ class SettingsPanel:
         scale_frame = tk.Frame(tab, bg=self.COLORS['bg'])
         scale_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 4))
         
-        self.scale_var = tk.DoubleVar(value=self.config.get('scale', 0.5))
+        self.scale_var = tk.DoubleVar(value=self.config.config.scale)
         
         self.scale_label = tk.Label(scale_frame, text=self._fmt_scale(self.scale_var.get()),
                                     bg=self.COLORS['bg'], fg=self.COLORS['accent'],
@@ -143,7 +143,7 @@ class SettingsPanel:
             row=row, column=0, sticky="w", padx=20, pady=(16, 4))
         row += 1
         
-        self.ss_var = tk.StringVar(value=self.config.get('screenshot_action', 'recycle'))
+        self.ss_var = tk.StringVar(value=self.config.config.screenshot_action.value)
         ss_frame = tk.Frame(tab, bg=self.COLORS['bg'])
         ss_frame.grid(row=row, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4))
         
@@ -166,7 +166,7 @@ class SettingsPanel:
         row = 0
         
         # 启用 AI 助手
-        self.ai_enabled_var = tk.BooleanVar(value=self.config.get('ai_enabled', False))
+        self.ai_enabled_var = tk.BooleanVar(value=self.config.agent_config.enabled)
         tk.Checkbutton(tab, text="启用 AI 助手", variable=self.ai_enabled_var,
                       bg=self.COLORS['bg'], fg=self.COLORS['fg'],
                       selectcolor=self.COLORS['bg'], activebackground=self.COLORS['bg'],
@@ -180,7 +180,7 @@ class SettingsPanel:
                  anchor="w", font=("Microsoft YaHei", 10)).grid(
             row=row, column=0, sticky="w", padx=20, pady=(8, 4))
         
-        self.agent_type_var = tk.StringVar(value=self.config.get('agent_type', 'openclaw'))
+        self.agent_type_var = tk.StringVar(value=self.config.agent_config.agent_type.value)
         type_frame = tk.Frame(tab, bg=self.COLORS['bg'])
         type_frame.grid(row=row, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4))
         
@@ -198,7 +198,7 @@ class SettingsPanel:
             row=row, column=0, sticky="w", padx=20, pady=(8, 4))
         row += 1
         
-        self.endpoint_var = tk.StringVar(value=self.config.get('agent_endpoint', 'http://localhost:8080'))
+        self.endpoint_var = tk.StringVar(value=self.config.agent_config.endpoint)
         tk.Entry(tab, textvariable=self.endpoint_var, bg=self.COLORS['entry_bg'],
                 fg=self.COLORS['fg'], insertbackground=self.COLORS['fg'],
                 relief="flat", font=("Microsoft YaHei", 10)).grid(
@@ -211,7 +211,7 @@ class SettingsPanel:
             row=row, column=0, sticky="w", padx=20, pady=(8, 4))
         row += 1
         
-        self.token_var = tk.StringVar(value=self.config.get('agent_token', ''))
+        self.token_var = tk.StringVar(value=self.config.agent_config.api_key)
         tk.Entry(tab, textvariable=self.token_var, bg=self.COLORS['entry_bg'],
                 fg=self.COLORS['fg'], insertbackground=self.COLORS['fg'],
                 relief="flat", font=("Microsoft YaHei", 10), show="*").grid(
@@ -223,7 +223,7 @@ class SettingsPanel:
                  anchor="w", font=("Microsoft YaHei", 10)).grid(
             row=row, column=0, sticky="w", padx=20, pady=(8, 4))
         
-        self.timeout_var = tk.IntVar(value=self.config.get('agent_timeout', 30))
+        self.timeout_var = tk.IntVar(value=self.config.agent_config.timeout)
         tk.Spinbox(tab, textvariable=self.timeout_var, from_=5, to=120,
                   bg=self.COLORS['entry_bg'], fg=self.COLORS['fg'],
                   insertbackground=self.COLORS['fg'], relief="flat",
@@ -353,7 +353,7 @@ class SettingsPanel:
     
     def _load_reminders(self):
         """加载提醒列表"""
-        reminders = self.config.get('reminders', [])
+        reminders = self.config.reminders
         
         # 清空列表
         for item in self.reminder_tree.get_children():
@@ -384,7 +384,7 @@ class SettingsPanel:
         item = self.reminder_tree.item(selected[0])
         values = item['values']
         
-        reminders = self.config.get('reminders', [])
+        reminders = self.config.reminders
         for reminder in reminders:
             if reminder.get('name') == values[0]:
                 ReminderDialog(self.window, reminder=reminder, callback=self._on_reminder_updated)
@@ -403,7 +403,7 @@ class SettingsPanel:
         item = self.reminder_tree.item(selected[0])
         name = item['values'][0]
         
-        reminders = self.config.get('reminders', [])
+        reminders = self.config.reminders
         reminders = [r for r in reminders if r.get('name') != name]
         self.config.set('reminders', reminders)
         
@@ -411,14 +411,14 @@ class SettingsPanel:
     
     def _on_reminder_added(self, reminder):
         """提醒添加回调"""
-        reminders = self.config.get('reminders', [])
+        reminders = self.config.reminders
         reminders.append(reminder)
         self.config.set('reminders', reminders)
         self._load_reminders()
     
     def _on_reminder_updated(self, reminder):
         """提醒更新回调"""
-        reminders = self.config.get('reminders', [])
+        reminders = self.config.reminders
         for i, r in enumerate(reminders):
             if r.get('name') == reminder.get('name'):
                 reminders[i] = reminder

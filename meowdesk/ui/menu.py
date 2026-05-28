@@ -87,7 +87,7 @@ class ContextMenu:
     
     def _open_html(self):
         """打开 HTML 导航页"""
-        archive_dir = self.config.get('archive_dir')
+        archive_dir = self.config.archive_dir
         html_file = os.path.join(archive_dir, 'index.html')
         
         if os.path.exists(html_file):
@@ -97,7 +97,7 @@ class ContextMenu:
     
     def _open_archive_dir(self):
         """打开归档目录"""
-        archive_dir = self.config.get('archive_dir')
+        archive_dir = self.config.archive_dir
         
         if os.path.exists(archive_dir):
             if sys.platform == 'win32':

@@ -123,7 +123,7 @@ class SystemTray:
     
     def _open_html(self):
         """打开 HTML 导航页"""
-        archive_dir = self.config.get('archive_dir') if self.config else 'D:\\meow-file'
+        archive_dir = self.config.archive_dir if self.config else 'D:\\meow-file'
         html_file = os.path.join(archive_dir, 'index.html')
         if os.path.exists(html_file):
             webbrowser.open(f'file:///{html_file}')
@@ -132,7 +132,7 @@ class SystemTray:
     
     def _open_archive(self):
         """打开归档目录"""
-        archive_dir = self.config.get('archive_dir') if self.config else 'D:\\meow-file'
+        archive_dir = self.config.archive_dir if self.config else 'D:\\meow-file'
         if os.path.exists(archive_dir):
             if sys.platform == 'win32':
                 os.startfile(archive_dir)

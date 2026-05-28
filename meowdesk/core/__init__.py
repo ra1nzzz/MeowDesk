@@ -2,9 +2,21 @@
 MeowDesk 核心功能模块
 """
 
-from .classifier import FileClassifier
-from .database import FileDatabase
-from .file_handler import FileHandler
 from .config import ConfigManager
+from .database import FileDatabase
+from .classifier import FileClassifier
+from .file_handler import FileHandler
+from .types import (
+    AppConfig, CategoryConfig, AgentConfig, Reminder,
+    FileAction, AgentType, Platform,
+    ClassifyResult, FileRecord, ArchiveResult, ProcessResult,
+    get_platform
+)
 
-__all__ = ['FileClassifier', 'FileDatabase', 'FileHandler', 'ConfigManager']
+__all__ = [
+    'ConfigManager', 'FileDatabase', 'FileClassifier', 'FileHandler',
+    'AppConfig', 'CategoryConfig', 'AgentConfig', 'Reminder',
+    'FileAction', 'AgentType', 'Platform',
+    'ClassifyResult', 'FileRecord', 'ArchiveResult', 'ProcessResult',
+    'get_platform'
+]
