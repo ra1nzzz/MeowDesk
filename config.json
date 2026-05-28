@@ -150,9 +150,9 @@
     }
   },
   "scale": 0.3,
-  "ai_enabled": false,
+  "ai_enabled": true,
   "agent_type": "openclaw",
-  "agent_endpoint": "http://localhost:8080",
+  "agent_endpoint": "http://localhost:9013",
   "agent_token": "",
   "agent_timeout": 30
 }

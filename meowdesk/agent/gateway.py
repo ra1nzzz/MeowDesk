@@ -53,12 +53,32 @@ class AgentGateway:
             else:
                 resp = requests.post(url, json=data, headers=self.headers, timeout=self.timeout)
 
-            return {
-                'success': resp.status_code == 200,
-                'status': resp.status_code,
-                'data': resp.json() if resp.status_code == 200 else None,
-                'error': None if resp.status_code == 200 else resp.text
-            }
+            # 处理响应
+            if resp.status_code == 200:
+                # 尝试解析 JSON，如果为空则返回成功
+                try:
+                    json_data = resp.json()
+                    return {
+                        'success': True,
+                        'status': resp.status_code,
+                        'data': json_data,
+                        'error': None
+                    }
+                except ValueError:
+                    # 响应不是 JSON，但状态码是 200
+                    return {
+                        'success': True,
+                        'status': resp.status_code,
+                        'data': {'response': resp.text} if resp.text else {},
+                        'error': None
+                    }
+            else:
+                return {
+                    'success': False,
+                    'status': resp.status_code,
+                    'data': None,
+                    'error': resp.text or f'HTTP {resp.status_code}'
+                }
         except requests.Timeout:
             return {'success': False, 'error': '请求超时'}
         except Exception as e:
@@ -86,7 +106,15 @@ class AgentGateway:
         """检查 Agent 是否可用"""
         if not self.enabled:
             return False
-        return self._request('GET', '/health').get('success', False)
+
+        # 尝试多个健康检查端点
+        paths = ['/health', '/api/health', '/v1/health', '/api/v1/health', '/status', '/']
+        for path in paths:
+            result = self._request('GET', path)
+            if result.get('success'):
+                return True
+
+        return False
 
     def chat(self, message: str, context: Optional[Dict] = None) -> Dict[str, Any]:
         """发送对话消息"""

@@ -9,6 +9,7 @@ import tkinter as tk
 from tkinter import Menu, messagebox, filedialog
 import webbrowser
 import subprocess
+from datetime import datetime
 from .settings import SettingsPanel
 
 
@@ -117,64 +118,210 @@ class ContextMenu:
     def _clean_disk(self):
         """清理磁盘"""
         from ..agent import CommandRegistry
+        
+        # 确认对话框
+        if not messagebox.askyesno("清理磁盘", 
+                                   "将清理超过7天的临时文件。\n是否继续？",
+                                   parent=self.parent):
+            return
+        
         registry = CommandRegistry()
         result = registry.execute('clean_disk')
+        
         if result['success']:
             data = result['result']
-            print(f"清理完成: {data['cleaned_files']} 个文件, {data['cleaned_size_mb']} MB")
+            files = data.get('cleaned_files', 0)
+            size_mb = data.get('cleaned_size_mb', 0)
+            
+            if files > 0:
+                msg = f"清理完成！\n\n清理文件: {files} 个\n释放空间: {size_mb:.2f} MB"
+                messagebox.showinfo("清理完成", msg, parent=self.parent)
+            else:
+                messagebox.showinfo("清理完成", "没有需要清理的临时文件。", parent=self.parent)
         else:
-            print(f"清理失败: {result.get('error')}")
+            error = result.get('error', '未知错误')
+            messagebox.showerror("清理失败", f"清理失败: {error}", parent=self.parent)
     
     def _check_date(self):
         """查看日期"""
         from ..agent import CommandRegistry
         registry = CommandRegistry()
         result = registry.execute('check_date')
+        
         if result['success']:
             data = result['result']
-            msg = f"今天: {data['today']} {data['weekday']}\n"
-            msg += f"距离周末: {data['days_to_weekend']} 天\n"
-            msg += f"距离月底: {data['days_to_month_end']} 天"
-            self._show_message("日期信息", msg)
+            weekday = data['weekday']
+            today = data['today']
+            days_to_weekend = data['days_to_weekend']
+            days_to_month_end = data['days_to_month_end']
+            week_of_year = data['week_of_year']
+            
+            msg = f"📅 {today} {weekday}\n\n"
+            msg += f"距离周末: {days_to_weekend} 天\n"
+            msg += f"距离月底: {days_to_month_end} 天\n"
+            msg += f"本年第 {week_of_year} 周"
+            
+            messagebox.showinfo("日期信息", msg, parent=self.parent)
         else:
-            print(f"查询失败: {result.get('error')}")
+            messagebox.showerror("错误", f"查询失败: {result.get('error')}", parent=self.parent)
     
     def _check_holidays(self):
         """假期提醒"""
         from ..agent import CommandRegistry
         registry = CommandRegistry()
         result = registry.execute('check_holidays')
+        
         if result['success']:
             holidays = result['result']['upcoming_holidays']
             if holidays:
-                msg = "即将到来的假期:\n\n"
-                for h in holidays[:3]:
-                    msg += f"{h['name']}: {h['date']} (还有 {h['days_left']} 天)\n"
-                self._show_message("假期提醒", msg)
+                msg = "🎉 即将到来的假期:\n\n"
+                for h in holidays[:5]:
+                    name = h['name']
+                    date = h['date']
+                    days_left = h['days_left']
+                    
+                    if days_left == 0:
+                        msg += f"• {name}: {date} (今天!)\n"
+                    elif days_left == 1:
+                        msg += f"• {name}: {date} (明天)\n"
+                    else:
+                        msg += f"• {name}: {date} (还有 {days_left} 天)\n"
+                
+                messagebox.showinfo("假期提醒", msg, parent=self.parent)
             else:
-                self._show_message("假期提醒", "暂无即将到来的假期")
+                messagebox.showinfo("假期提醒", "近期没有假期。", parent=self.parent)
         else:
-            print(f"查询失败: {result.get('error')}")
+            messagebox.showerror("错误", f"查询失败: {result.get('error')}", parent=self.parent)
     
     def _period_reminder(self):
-        """经期提醒"""
-        # TODO: 实现经期提醒设置界面
-        print("经期提醒（待实现）")
+        """经期提醒设置"""
+        # 创建设置对话框
+        win = tk.Toplevel(self.parent)
+        win.title("经期提醒设置")
+        win.configure(bg='#1a1d27')
+        win.resizable(False, False)
+        
+        # 居中显示
+        win.update_idletasks()
+        sw = win.winfo_screenwidth()
+        sh = win.winfo_screenheight()
+        ww, wh = 350, 250
+        win.geometry(f"{ww}x{wh}+{(sw-ww)//2}+{(sh-wh)//2}")
+        win.attributes("-topmost", True)
+        win.grab_set()
+        
+        bg = '#1a1d27'
+        fg = '#e2e8f0'
+        entry_bg = '#242837'
+        accent = '#6366f1'
+        
+        row = 0
+        
+        # 上次经期日期
+        tk.Label(win, text="上次经期日期", bg=bg, fg=fg,
+                 font=("Microsoft YaHei", 10, "bold")).grid(
+            row=row, column=0, sticky="w", padx=20, pady=(20, 4))
+        row += 1
+        
+        date_frame = tk.Frame(win, bg=bg)
+        date_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 8))
+        
+        from ..core.types import Reminder
+        last_date = self.config.config.reminders[0].last_triggered if self.config.reminders else ""
+        date_var = tk.StringVar(value=last_date or datetime.now().strftime('%Y-%m-%d'))
+        tk.Entry(date_frame, textvariable=date_var, bg=entry_bg, fg=fg,
+                insertbackground=fg, relief="flat", font=("Microsoft YaHei", 10),
+                width=15).pack(side='left')
+        tk.Label(date_frame, text="(YYYY-MM-DD)", bg=bg, fg='#6b7280',
+                font=("Microsoft YaHei", 9)).pack(side='left', padx=(8, 0))
+        row += 1
+        
+        # 周期天数
+        tk.Label(win, text="周期天数", bg=bg, fg=fg,
+                 font=("Microsoft YaHei", 10, "bold")).grid(
+            row=row, column=0, sticky="w", padx=20, pady=(8, 4))
+        row += 1
+        
+        cycle_var = tk.IntVar(value=28)
+        tk.Spinbox(win, textvariable=cycle_var, from_=21, to=35,
+                  bg=entry_bg, fg=fg, insertbackground=fg, relief="flat",
+                  font=("Microsoft YaHei", 10), width=10).grid(
+            row=row, column=0, sticky="w", padx=20, pady=(0, 8))
+        row += 1
+        
+        # 结果显示
+        result_label = tk.Label(win, text="", bg=bg, fg=fg,
+                               font=("Microsoft YaHei", 10), wraplength=300)
+        result_label.grid(row=row, column=0, columnspan=2, padx=20, pady=(8, 8))
+        row += 1
+        
+        def calculate():
+            """计算下次经期"""
+            try:
+                from datetime import datetime, timedelta
+                last = datetime.strptime(date_var.get(), '%Y-%m-%d')
+                cycle = cycle_var.get()
+                next_date = last + timedelta(days=cycle)
+                days_left = (next_date - datetime.now()).days
+                
+                if days_left > 0:
+                    msg = f"下次经期: {next_date.strftime('%Y-%m-%d')}\n还有 {days_left} 天"
+                elif days_left == 0:
+                    msg = "今天是预计经期日"
+                else:
+                    msg = f"已过期 {abs(days_left)} 天"
+                
+                result_label.config(text=msg)
+            except ValueError:
+                result_label.config(text="日期格式错误，请使用 YYYY-MM-DD")
+        
+        # 按钮
+        btn_frame = tk.Frame(win, bg=bg)
+        btn_frame.grid(row=row, column=0, columnspan=2, pady=(8, 16))
+        
+        tk.Button(btn_frame, text="计算", command=calculate,
+                 bg=accent, fg="#fff", relief="flat", cursor="hand2",
+                 padx=20, pady=4).pack(side='left', padx=8)
+        tk.Button(btn_frame, text="关闭", command=win.destroy,
+                 bg='#374151', fg=fg, relief="flat", cursor="hand2",
+                 padx=16, pady=4).pack(side='left', padx=8)
     
     def _system_info(self):
         """系统信息"""
         from ..agent import CommandRegistry
         registry = CommandRegistry()
         result = registry.execute('system_info')
+        
         if result['success']:
             data = result['result']
-            msg = f"操作系统: {data['os']}\n"
-            msg += f"CPU: {data['cpu_count']} 核心, {data['cpu_percent']}% 使用率\n"
-            msg += f"内存: {data['memory_used_gb']:.1f}/{data['memory_total_gb']:.1f} GB ({data['memory_percent']}%)\n"
-            msg += f"磁盘: {data['disk_used_gb']:.1f}/{data['disk_total_gb']:.1f} GB ({data['disk_percent']}%)"
-            self._show_message("系统信息", msg)
+            os_name = data.get('os', '未知')
+            os_version = data.get('os_version', '')
+            cpu_count = data.get('cpu_count', 0)
+            cpu_percent = data.get('cpu_percent', 0)
+            memory_total = data.get('memory_total_gb', 0)
+            memory_used = data.get('memory_used_gb', 0)
+            memory_percent = data.get('memory_percent', 0)
+            disk_total = data.get('disk_total_gb', 0)
+            disk_used = data.get('disk_used_gb', 0)
+            disk_percent = data.get('disk_percent', 0)
+            
+            msg = f"💻 系统信息\n\n"
+            msg += f"系统: {os_name}\n"
+            msg += f"CPU: {cpu_count} 核心, {cpu_percent}% 使用率\n"
+            
+            if memory_total > 0:
+                msg += f"内存: {memory_used:.1f}/{memory_total:.1f} GB ({memory_percent}%)\n"
+            else:
+                msg += f"内存: 信息不可用\n"
+            
+            if disk_total > 0:
+                msg += f"磁盘: {disk_used:.1f}/{disk_total:.1f} GB ({disk_percent}%)"
+            else:
+                msg += f"磁盘: 信息不可用"
+            
+            messagebox.showinfo("系统信息", msg, parent=self.parent)
         else:
-            print(f"查询失败: {result.get('error')}")
+            messagebox.showerror("错误", f"查询失败: {result.get('error')}", parent=self.parent)
     
     def _open_settings(self):
         """打开设置面板"""
