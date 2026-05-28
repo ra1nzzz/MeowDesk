@@ -8,7 +8,7 @@ import json
 from typing import Dict, Any, Optional
 
 from .types import (
-    AppConfig, CategoryConfig, AgentConfig, Reminder,
+    AppConfig, CategoryConfig, AgentConfig, Reminder, PeriodConfig,
     FileAction, AgentType
 )
 
@@ -70,6 +70,9 @@ class ConfigManager:
         # 提醒配置
         config.reminders = [Reminder.from_dict(r) for r in data.get('reminders', [])]
 
+        # 经期提醒配置
+        config.period = PeriodConfig.from_dict(data.get('period', {}))
+
         return config
 
     def _save(self, config: Optional[AppConfig] = None) -> bool:
@@ -90,7 +93,8 @@ class ConfigManager:
                 for name, cat in config.categories.items()
             },
             'agent': config.agent.to_dict(),
-            'reminders': [r.to_dict() for r in config.reminders]
+            'reminders': [r.to_dict() for r in config.reminders],
+            'period': config.period.to_dict()
         }
 
         try:

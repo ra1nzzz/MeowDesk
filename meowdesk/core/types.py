@@ -113,6 +113,92 @@ class Reminder:
 
 
 @dataclass
+class PeriodRecord:
+    """经期记录"""
+    start_date: str      # YYYY-MM-DD
+    end_date: str        # YYYY-MM-DD
+    actual_days: int = 0  # 实际天数
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'actual_days': self.actual_days
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'PeriodRecord':
+        return cls(
+            start_date=data.get('start_date', ''),
+            end_date=data.get('end_date', ''),
+            actual_days=data.get('actual_days', 0)
+        )
+
+
+@dataclass
+class PeriodConfig:
+    """经期提醒配置"""
+    enabled: bool = False
+    mode: str = "self"           # self=我是女生, partner=伴侣提醒
+    cycle_days: int = 28         # 周期天数
+    period_days: int = 5         # 经期天数
+    last_period_start: str = ""  # 上次经期首日 YYYY-MM-DD
+    last_period_end: str = ""    # 上次经期结束日 YYYY-MM-DD
+    records: List[PeriodRecord] = field(default_factory=list)  # 历史记录
+    calibration_offset: int = 0  # 校准偏移天数 (+/-)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'enabled': self.enabled,
+            'mode': self.mode,
+            'cycle_days': self.cycle_days,
+            'period_days': self.period_days,
+            'last_period_start': self.last_period_start,
+            'last_period_end': self.last_period_end,
+            'records': [r.to_dict() for r in self.records],
+            'calibration_offset': self.calibration_offset
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'PeriodConfig':
+        records = [PeriodRecord.from_dict(r) for r in data.get('records', [])]
+        return cls(
+            enabled=data.get('enabled', False),
+            mode=data.get('mode', 'self'),
+            cycle_days=data.get('cycle_days', 28),
+            period_days=data.get('period_days', 5),
+            last_period_start=data.get('last_period_start', ''),
+            last_period_end=data.get('last_period_end', ''),
+            records=records,
+            calibration_offset=data.get('calibration_offset', 0)
+        )
+
+    def get_predicted_dates(self) -> Dict[str, str]:
+        """获取预测的下次经期日期"""
+        if not self.last_period_start:
+            return {}
+
+        from datetime import datetime, timedelta
+        try:
+            last_start = datetime.strptime(self.last_period_start, '%Y-%m-%d')
+            # 应用校准偏移
+            next_start = last_start + timedelta(days=self.cycle_days + self.calibration_offset)
+            next_end = next_start + timedelta(days=self.period_days - 1)
+
+            return {
+                'predicted_start': next_start.strftime('%Y-%m-%d'),
+                'predicted_end': next_end.strftime('%Y-%m-%d'),
+                'days_until': (next_start - datetime.now()).days
+            }
+        except ValueError:
+            return {}
+
+    def calibrate(self, offset: int) -> None:
+        """校准偏移"""
+        self.calibration_offset = offset
+
+
+@dataclass
 class AppConfig:
     """应用配置"""
     archive_dir: str = ""
@@ -125,6 +211,7 @@ class AppConfig:
     categories: Dict[str, CategoryConfig] = field(default_factory=dict)
     agent: AgentConfig = field(default_factory=AgentConfig)
     reminders: List[Reminder] = field(default_factory=list)
+    period: PeriodConfig = field(default_factory=PeriodConfig)
 
     @classmethod
     def get_default(cls) -> 'AppConfig':

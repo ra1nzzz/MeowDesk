@@ -7,7 +7,7 @@ from .database import FileDatabase
 from .classifier import FileClassifier
 from .file_handler import FileHandler
 from .types import (
-    AppConfig, CategoryConfig, AgentConfig, Reminder,
+    AppConfig, CategoryConfig, AgentConfig, Reminder, PeriodConfig, PeriodRecord,
     FileAction, AgentType, Platform,
     ClassifyResult, FileRecord, ArchiveResult, ProcessResult,
     get_platform
@@ -15,7 +15,7 @@ from .types import (
 
 __all__ = [
     'ConfigManager', 'FileDatabase', 'FileClassifier', 'FileHandler',
-    'AppConfig', 'CategoryConfig', 'AgentConfig', 'Reminder',
+    'AppConfig', 'CategoryConfig', 'AgentConfig', 'Reminder', 'PeriodConfig', 'PeriodRecord',
     'FileAction', 'AgentType', 'Platform',
     'ClassifyResult', 'FileRecord', 'ArchiveResult', 'ProcessResult',
     'get_platform'

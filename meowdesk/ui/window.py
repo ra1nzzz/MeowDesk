@@ -427,24 +427,47 @@ class MeowWindow:
         if current_time == self.last_reminder_check:
             return
 
-        # 获取提醒列表
+        # 检查普通提醒
         reminders = self.config.reminders
-        if not reminders:
-            return
-
-        # 检查是否有需要触发的提醒
         for reminder in reminders:
             if not reminder.enabled:
                 continue
 
             if reminder.time == current_time:
-                # 检查重复规则
                 if self._should_trigger_reminder(reminder):
                     content = reminder.content or reminder.name or '提醒'
                     self._show_bubble(content, 120)
                     print(f"[提醒] {reminder.name}: {content}")
 
+        # 检查经期提醒
+        self._check_period_reminder()
+
         self.last_reminder_check = current_time
+
+    def _check_period_reminder(self):
+        """检查经期提醒"""
+        period = self.config.config.period
+        if not period.enabled:
+            return
+
+        prediction = period.get_predicted_dates()
+        if not prediction:
+            return
+
+        days_until = prediction['days_until']
+        predicted_start = prediction['predicted_start']
+        predicted_end = prediction['predicted_end']
+
+        # 提前2天、1天、0天提醒
+        if days_until == 2:
+            mode_text = "您的" if period.mode == "self" else "伴侣的"
+            self._show_bubble(f"{mode_text}预计经期将在后天到来 ({predicted_start}~{predicted_end})", 180)
+        elif days_until == 1:
+            mode_text = "您的" if period.mode == "self" else "伴侣的"
+            self._show_bubble(f"{mode_text}预计经期明天到来 ({predicted_start}~{predicted_end})", 180)
+        elif days_until == 0:
+            mode_text = "您的" if period.mode == "self" else "伴侣的"
+            self._show_bubble(f"提醒: {mode_text}预计经期今天开始 ({predicted_start}~{predicted_end})", 180)
 
     def _should_trigger_reminder(self, reminder) -> bool:
         """检查是否应该触发提醒"""

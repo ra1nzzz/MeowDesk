@@ -68,7 +68,7 @@ class ChatWindow:
         self.window.update_idletasks()
         sw = self.window.winfo_screenwidth()
         sh = self.window.winfo_screenheight()
-        ww, wh = 500, 600
+        ww, wh = 550, 700
         self.window.geometry(f"{ww}x{wh}+{(sw-ww)//2}+{(sh-wh)//2}")
         self.window.attributes("-topmost", True)
         
@@ -133,19 +133,20 @@ class ChatWindow:
         # 输入区域
         input_frame = tk.Frame(self.window, bg=COLORS['border'])
         input_frame.pack(fill='x', padx=10, pady=10)
-        
+
         self.input_text = tk.Text(
             input_frame, bg=COLORS['entry_bg'], fg=COLORS['fg'],
-            font=(FONT_FAMILY, 10), height=3, relief="flat", padx=10, pady=8
+            font=(FONT_FAMILY, 11), height=5, relief="flat", padx=12, pady=10,
+            wrap='word'
         )
         self.input_text.pack(side='left', fill='both', expand=True)
         self.input_text.bind('<Return>', self._on_enter)
         
         tk.Button(
             input_frame, text="发送", bg=COLORS['accent'], fg="#ffffff",
-            relief="flat", cursor="hand2", padx=16, pady=8,
-            font=(FONT_FAMILY, 10, "bold"), command=self._send_message
-        ).pack(side='right', padx=(5, 0))
+            relief="flat", cursor="hand2", padx=20, pady=12,
+            font=(FONT_FAMILY, 11, "bold"), command=self._send_message
+        ).pack(side='right', padx=(8, 0))
         
         # 状态栏
         self.status_label = tk.Label(

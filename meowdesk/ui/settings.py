@@ -50,7 +50,7 @@ class SettingsPanel:
         self.window.update_idletasks()
         sw = self.window.winfo_screenwidth()
         sh = self.window.winfo_screenheight()
-        ww, wh = 520, 480
+        ww, wh = 520, 550
         self.window.geometry(f"{ww}x{wh}+{(sw-ww)//2}+{(sh-wh)//2}")
         self.window.attributes("-topmost", True)
         self.window.grab_set()
@@ -84,6 +84,7 @@ class SettingsPanel:
         self._create_general_tab()
         self._create_ai_tab()
         self._create_reminder_tab()
+        self._create_period_tab()
     
     def _create_general_tab(self):
         """创建常规设置选项卡"""
@@ -428,22 +429,64 @@ class SettingsPanel:
     
     def _save(self):
         """保存设置"""
+        from ..core.types import PeriodConfig, PeriodRecord
+
         # 保存常规设置
         self.config.set('archive_dir', self.dir_var.get().strip())
         self.config.set('scale', round(self.scale_var.get(), 2))
         self.config.set('screenshot_action', self.ss_var.get())
-        
+
         # 保存 AI 设置
-        self.config.set('ai_enabled', self.ai_enabled_var.get())
-        self.config.set('agent_type', self.agent_type_var.get())
-        self.config.set('agent_endpoint', self.endpoint_var.get().strip())
-        self.config.set('agent_token', self.token_var.get().strip())
-        self.config.set('agent_timeout', self.timeout_var.get())
-        
+        agent_config = self.config.agent_config
+        agent_config.enabled = self.ai_enabled_var.get()
+        agent_config.agent_type = self.agent_type_var.get()
+        agent_config.endpoint = self.endpoint_var.get().strip()
+        agent_config.api_key = self.token_var.get().strip()
+        agent_config.timeout = self.timeout_var.get()
+        self.config.config.agent = agent_config
+
+        # 保存经期提醒设置
+        period = self.config.config.period
+        period.enabled = self.period_enabled_var.get()
+        period.mode = self.period_mode_var.get()
+        period.cycle_days = self.cycle_days_var.get()
+        period.period_days = self.period_days_var.get()
+
+        # 更新经期日期
+        new_start = self.last_start_var.get().strip()
+        new_end = self.last_end_var.get().strip()
+
+        if new_start and new_start != period.last_period_start:
+            period.last_period_start = new_start
+            # 添加到历史记录
+            if new_end:
+                period.last_period_end = new_end
+                actual_days = 5  # 默认
+                try:
+                    from datetime import datetime
+                    start = datetime.strptime(new_start, '%Y-%m-%d')
+                    end = datetime.strptime(new_end, '%Y-%m-%d')
+                    actual_days = (end - start).days + 1
+                except:
+                    pass
+                record = PeriodRecord(start_date=new_start, end_date=new_end, actual_days=actual_days)
+                period.records.append(record)
+                # 只保留最近6次记录
+                if len(period.records) > 6:
+                    period.records = period.records[-6:]
+
+        # 保存校准偏移
+        period.calibration_offset = self.calib_offset_var.get()
+
+        self.config.config.period = period
+
+        # 保存配置
+        self.config.save()
+
         # 触发回调
         if self.on_save_callback:
             self.on_save_callback()
-        
+
         messagebox.showinfo("设置", "设置已保存！", parent=self.window)
         self.window.destroy()
 
@@ -584,3 +627,167 @@ class ReminderDialog:
             self.callback(reminder)
         
         self.dialog.destroy()
+
+    def _create_period_tab(self):
+        """创建经期提醒选项卡"""
+        tab = tk.Frame(self.notebook, bg=self.COLORS['bg'])
+        self.notebook.add(tab, text='  经期提醒  ')
+
+        period = self.config.config.period
+        row = 0
+
+        # 启用开关
+        self.period_enabled_var = tk.BooleanVar(value=period.enabled)
+        tk.Checkbutton(tab, text="启用经期提醒", variable=self.period_enabled_var,
+                      bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                      selectcolor=self.COLORS['bg'], activebackground=self.COLORS['bg'],
+                      activeforeground=self.COLORS['fg'],
+                      font=("Microsoft YaHei", 10, "bold")).grid(
+            row=row, column=0, sticky="w", padx=20, pady=(20, 8))
+        row += 1
+
+        # 性别/模式选择
+        tk.Label(tab, text="提醒模式", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 anchor="w", font=("Microsoft YaHei", 10, "bold")).grid(
+            row=row, column=0, sticky="w", padx=20, pady=(8, 4))
+        row += 1
+
+        self.period_mode_var = tk.StringVar(value=period.mode)
+        mode_frame = tk.Frame(tab, bg=self.COLORS['bg'])
+        mode_frame.grid(row=row, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 8))
+
+        tk.Radiobutton(mode_frame, text="我是女生", variable=self.period_mode_var, value="self",
+                      bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                      selectcolor=self.COLORS['bg'], activebackground=self.COLORS['bg'],
+                      activeforeground=self.COLORS['fg'],
+                      font=("Microsoft YaHei", 10)).pack(side="left", padx=(0, 20))
+        tk.Radiobutton(mode_frame, text="伴侣提醒", variable=self.period_mode_var, value="partner",
+                      bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                      selectcolor=self.COLORS['bg'], activebackground=self.COLORS['bg'],
+                      activeforeground=self.COLORS['fg'],
+                      font=("Microsoft YaHei", 10)).pack(side="left")
+        row += 1
+
+        # 周期和经期天数
+        cycle_frame = tk.Frame(tab, bg=self.COLORS['bg'])
+        cycle_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=20, pady=(8, 4))
+
+        tk.Label(cycle_frame, text="周期天数", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 font=("Microsoft YaHei", 10)).pack(side='left')
+        self.cycle_days_var = tk.IntVar(value=period.cycle_days)
+        tk.Spinbox(cycle_frame, textvariable=self.cycle_days_var, from_=21, to=45,
+                  bg=self.COLORS['entry_bg'], fg=self.COLORS['fg'],
+                  insertbackground=self.COLORS['fg'], relief="flat",
+                  font=("Microsoft YaHei", 10), width=5).pack(side='left', padx=(8, 20))
+
+        tk.Label(cycle_frame, text="经期天数", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 font=("Microsoft YaHei", 10)).pack(side='left')
+        self.period_days_var = tk.IntVar(value=period.period_days)
+        tk.Spinbox(cycle_frame, textvariable=self.period_days_var, from_=2, to=10,
+                  bg=self.COLORS['entry_bg'], fg=self.COLORS['fg'],
+                  insertbackground=self.COLORS['fg'], relief="flat",
+                  font=("Microsoft YaHei", 10), width=5).pack(side='left', padx=(8, 0))
+        row += 1
+
+        # 上次经期日期
+        tk.Label(tab, text="上次经期日期", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 anchor="w", font=("Microsoft YaHei", 10, "bold")).grid(
+            row=row, column=0, sticky="w", padx=20, pady=(12, 4))
+        row += 1
+
+        date_frame = tk.Frame(tab, bg=self.COLORS['bg'])
+        date_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 4))
+
+        tk.Label(date_frame, text="首日:", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 font=("Microsoft YaHei", 10)).pack(side='left')
+        self.last_start_var = tk.StringVar(value=period.last_period_start or "")
+        tk.Entry(date_frame, textvariable=self.last_start_var, bg=self.COLORS['entry_bg'],
+                fg=self.COLORS['fg'], insertbackground=self.COLORS['fg'],
+                relief="flat", font=("Microsoft YaHei", 10), width=12).pack(side='left', padx=(4, 16))
+
+        tk.Label(date_frame, text="结束日:", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 font=("Microsoft YaHei", 10)).pack(side='left')
+        self.last_end_var = tk.StringVar(value=period.last_period_end or "")
+        tk.Entry(date_frame, textvariable=self.last_end_var, bg=self.COLORS['entry_bg'],
+                fg=self.COLORS['fg'], insertbackground=self.COLORS['fg'],
+                relief="flat", font=("Microsoft YaHei", 10), width=12).pack(side='left', padx=(4, 0))
+
+        tk.Label(date_frame, text="(YYYY-MM-DD)", bg=self.COLORS['bg'], fg='#6b7280',
+                font=("Microsoft YaHei", 9)).pack(side='left', padx=(8, 0))
+        row += 1
+
+        # 预测结果
+        prediction = period.get_predicted_dates()
+        if prediction:
+            pred_text = f"预计下次经期: {prediction['predicted_start']} ~ {prediction['predicted_end']}"
+            days_until = prediction['days_until']
+            if days_until > 0:
+                pred_text += f" (还有 {days_until} 天)"
+            elif days_until == 0:
+                pred_text += " (今天)"
+            else:
+                pred_text += f" (已过 {abs(days_until)} 天)"
+        else:
+            pred_text = "请填写上次经期日期后自动预测"
+
+        self.pred_label = tk.Label(tab, text=pred_text, bg=self.COLORS['bg'], fg=self.COLORS['accent'],
+                                  font=("Microsoft YaHei", 10), wraplength=450)
+        self.pred_label.grid(row=row, column=0, columnspan=2, padx=20, pady=(8, 4))
+        row += 1
+
+        # 校准区域
+        tk.Label(tab, text="校准调整", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 anchor="w", font=("Microsoft YaHei", 10, "bold")).grid(
+            row=row, column=0, sticky="w", padx=20, pady=(12, 4))
+        row += 1
+
+        calib_frame = tk.Frame(tab, bg=self.COLORS['bg'])
+        calib_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 8))
+
+        tk.Label(calib_frame, text="偏移天数:", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 font=("Microsoft YaHei", 10)).pack(side='left')
+
+        self.calib_offset_var = tk.IntVar(value=period.calibration_offset)
+
+        tk.Button(calib_frame, text="-1天", command=lambda: self._adjust_calibration(-1),
+                 bg=self.COLORS['border'], fg=self.COLORS['fg'], relief="flat",
+                 cursor="hand2", padx=8, pady=2).pack(side='left', padx=(8, 4))
+
+        self.calib_label = tk.Label(calib_frame, text=str(period.calibration_offset),
+                                   bg=self.COLORS['entry_bg'], fg=self.COLORS['fg'],
+                                   font=("Microsoft YaHei", 10), width=4)
+        self.calib_label.pack(side='left', padx=4)
+
+        tk.Button(calib_frame, text="+1天", command=lambda: self._adjust_calibration(1),
+                 bg=self.COLORS['border'], fg=self.COLORS['fg'], relief="flat",
+                 cursor="hand2", padx=8, pady=2).pack(side='left', padx=(4, 16))
+
+        tk.Button(calib_frame, text="重置", command=lambda: self._adjust_calibration(0, reset=True),
+                 bg=self.COLORS['border'], fg=self.COLORS['fg'], relief="flat",
+                 cursor="hand2", padx=8, pady=2).pack(side='left')
+        row += 1
+
+        # 历史记录
+        if period.records:
+            tk.Label(tab, text="历史记录 (最近3次)", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                     anchor="w", font=("Microsoft YaHei", 10, "bold")).grid(
+                row=row, column=0, sticky="w", padx=20, pady=(8, 4))
+            row += 1
+
+            for i, record in enumerate(period.records[-3:]):
+                days = record.actual_days if record.actual_days else period.period_days
+                record_text = f"  {record.start_date} ~ {record.end_date} ({days}天)"
+                tk.Label(tab, text=record_text, bg=self.COLORS['bg'], fg='#9ca3af',
+                        font=("Microsoft YaHei", 9)).grid(
+                    row=row, column=0, sticky="w", padx=30, pady=1)
+                row += 1
+
+    def _adjust_calibration(self, delta, reset=False):
+        """调整校准偏移"""
+        if reset:
+            new_offset = 0
+        else:
+            new_offset = self.calib_offset_var.get() + delta
+
+        self.calib_offset_var.set(new_offset)
+        self.calib_label.config(text=str(new_offset))
