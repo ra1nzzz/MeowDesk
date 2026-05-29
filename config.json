@@ -152,7 +152,7 @@
   "scale": 0.3,
   "ai_enabled": true,
   "agent_type": "openclaw",
-  "agent_endpoint": "http://localhost:9013",
-  "agent_token": "",
+  "agent_endpoint": "http://localhost:18789",
+  "agent_token": "9f829723a6f8576a36ac2f0e87bcfec396eacf84a010b6bc",
   "agent_timeout": 30
 }
