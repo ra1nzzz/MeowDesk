@@ -233,18 +233,17 @@ AgentGateway.chat
 
 1. `ui/window.py` 内右键菜单/聊天气泡等仍有少量平台分支未抽出 —— 下一步可
    把 macOS 的 `show_context_menu` 移到一个独立的 menu helper。
-2. `_gen_html.py` 仍通过 importlib 动态加载（约 16KB）；可考虑作为
-   `meowdesk/index_gen.py` 模块直接 import，便于测试。
 
 ## 已完成的 P1 改进
 
 - ✅ `ui/window.py` 拆分（`WindowState` / `FileDropHandler` / `ReminderChecker`）
 - ✅ 动画循环去重：`AnimationLoop` 抽出 win32/macOS 共享的单帧逻辑
 - ✅ `meowdesk.utils` 包 + `logger.py` + `io.py`（原子写入 + 备份回退）
-- ✅ 所有 `print(...)` 改走 `logging`（包括 `meowdesk_main.py`）
+- ✅ 所有 `print(...)` 改走 `logging`（包括 `meowdesk_main.py`、`_gen_html.py`）
 - ✅ `ConfigManager.set` 拒绝未知 key 并 warning；`get` 用哨兵区分"缺字段"与"显式 None"
 - ✅ `FileHandler.archive_file` 失败时清理残留的空分类目录
 - ✅ `AppConfig` 字段映射自动化：`from_dict` / `to_dict` 把"序列化"和"配置结构"放一处
+- ✅ `_gen_html.py` 迁移为 `meowdesk/index_gen` 模块（正规 import，支持测试）
 
 ## 安全考虑
 
