@@ -1,24 +1,25 @@
-# -*- coding: utf-8 -*-
-"""基于 index_preview.html 样式生成 index.html
-- 截图/图片智能区分（时间戳、截图关键词）
-- 全量渲染 + JS分页（每页200条）
-- stat-card点击筛选 + 下拉筛选双向联动
-- 定位按钮（已归档文件）
-"""
-import base64, os, json, re, hashlib, datetime
+"""HTML index generator for MeowDesk file archive."""
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(SCRIPT_DIR, "filedb.json")
-ARCHIVE_DIR = r"D:\meow-file"
-ARCHIVE_URL = "D:/meow-file"
-PAGE_SIZE = 200
+import base64
+import hashlib
+import json
+import os
+import re
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from .utils import get_logger
+
+
+_log = get_logger(__name__)
+
 
 SCREENSHOT_RE = re.compile(
     r'^\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}'
     r'|^Screenshot[_\s]'
     r'|^微信截图'
     r'|^微信图片_\d{8}'
-    r'|^QQ截图'
+    r'|^QQ 截图'
     r'|^屏幕截图'
     r'|^Snipaste'
     r'|^截屏'
@@ -31,7 +32,8 @@ SCREENSHOT_RE = re.compile(
     re.IGNORECASE,
 )
 
-EXT_CAT = {
+
+EXT_CAT: Dict[str, str] = {
     ".png": "图片", ".jpg": "图片", ".jpeg": "图片", ".gif": "图片", ".bmp": "图片",
     ".webp": "图片", ".svg": "图片", ".ico": "图片", ".tiff": "图片", ".tif": "图片",
     ".mp4": "视频", ".avi": "视频", ".mkv": "视频", ".mov": "视频", ".wmv": "视频",
@@ -49,16 +51,24 @@ EXT_CAT = {
     ".psd": "设计稿", ".ai": "设计稿", ".sketch": "设计稿",
 }
 
-CAT_META = {
-    "截图": ("\U0001f4f8", "#ef4444"), "图片": ("\U0001f5bc\ufe0f", "#8b5cf6"),
-    "视频": ("\U0001f3ac", "#ec4899"), "音频": ("\U0001f3b5", "#f59e0b"),
-    "文档": ("\U0001f4c4", "#3b82f6"), "压缩包": ("\U0001f4e6", "#06b6d4"),
-    "安装包": ("\U0001f4bf", "#6366f1"), "代码": ("\U0001f4bb", "#10b981"),
-    "设计稿": ("\U0001f3a8", "#d946ef"), "其他": ("\U0001f4c1", "#94a3b8"),
+
+CAT_META: Dict[str, tuple] = {
+    "截图": ("\U0001f4f8", "#ef4444"),
+    "图片": ("\U0001f5bc\ufe0f", "#8b5cf6"),
+    "视频": ("\U0001f3ac", "#ec4899"),
+    "音频": ("\U0001f3b5", "#f59e0b"),
+    "文档": ("\U0001f4c4", "#3b82f6"),
+    "压缩包": ("\U0001f4e6", "#06b6d4"),
+    "安装包": ("\U0001f4bf", "#6366f1"),
+    "代码": ("\U0001f4bb", "#10b981"),
+    "设计稿": ("\U0001f3a8", "#d946ef"),
+    "其他": ("\U0001f4c1", "#94a3b8"),
 }
 
 
-def classify(name):
+def classify_filename(name: str) -> str:
+    """Classify a file by extension and screenshot heuristics."""
+
     ext = os.path.splitext(name)[1].lower()
     base = EXT_CAT.get(ext, "其他")
     if base == "图片" and SCREENSHOT_RE.search(name):
@@ -66,29 +76,21 @@ def classify(name):
     return base
 
 
-def fmt_size(sz):
-    if sz > 1073741824: return "%.1f GB" % (sz / 1073741824)
-    if sz > 1048576: return "%.1f MB" % (sz / 1048576)
-    if sz > 1024: return "%.1f KB" % (sz / 1024)
+def format_size(sz: int) -> str:
+    """Format a size in bytes to human-readable string."""
+
+    if sz > 1073741824:
+        return "%.1f GB" % (sz / 1073741824)
+    if sz > 1048576:
+        return "%.1f MB" % (sz / 1048576)
+    if sz > 1024:
+        return "%.1f KB" % (sz / 1024)
     return "%d B" % sz
 
 
-def main():
-    if not os.path.exists(DB_FILE):
-        data = []
-    else:
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    records = sorted(data, key=lambda r: r.get("timestamp", ""), reverse=True)
-    total_size = sum(r.get("file_size", 0) for r in records)
-    cats = {}
-    for rec in records:
-        c = rec.get("category", "其他")
-        if c not in cats: cats[c] = {"count": 0, "size": 0}
-        cats[c]["count"] += 1
-        cats[c]["size"] += rec.get("file_size", 0)
+def _build_stat_cards(cats: Dict[str, Dict[str, Any]]) -> str:
+    """Build the stat-card HTML blocks."""
 
-    # stat cards
     sc = []
     for cn, info in sorted(cats.items(), key=lambda x: -x[1]["count"]):
         emoji, color = CAT_META.get(cn, ("\U0001f4c1", "#94a3b8"))
@@ -97,19 +99,25 @@ def main():
             '<div class="stat-icon">' + emoji + '</div>'
             '<div class="stat-info">'
             '<div class="stat-name">' + cn + '</div>'
-            '<div class="stat-detail">' + str(info["count"]) + ' 个文件 · ' + fmt_size(info["size"]) + '</div>'
+            '<div class="stat-detail">' + str(info["count"]) + ' 个文件 · ' + format_size(info["size"]) + '</div>'
             '</div></div>'
         )
-    stat_cards = "\n".join(sc)
+    return "\n".join(sc)
 
-    # cat options
+
+def _build_cat_options(cats: Dict[str, Dict[str, Any]]) -> str:
+    """Build the <option> blocks for the category filter."""
+
     co = []
     for cn, info in sorted(cats.items(), key=lambda x: -x[1]["count"]):
         emoji, _ = CAT_META.get(cn, ("\U0001f4c1", "#94a3b8"))
         co.append('<option value="' + cn + '">' + emoji + ' ' + cn + ' (' + str(info["count"]) + ')</option>')
-    cat_options = "".join(co)
+    return "".join(co)
 
-    # rows (full, no limit)
+
+def _build_rows(records: List[Dict[str, Any]]) -> str:
+    """Build the table rows HTML."""
+
     rows = []
     for rec in records:
         cat = rec.get("category", "其他")
@@ -131,12 +139,38 @@ def main():
             '<td data-cat="' + cat + '"><span class="cat-dot" style="background:' + color + '"></span> ' + emoji + ' ' + cat + '</td>'
             '<td title="' + name + '">' + name + '</td>'
             '<td>' + date + '</td>'
-            '<td>' + fmt_size(sz) + '</td>'
+            '<td>' + format_size(sz) + '</td>'
             '<td><span class="badge ' + badge_cls + '">' + badge_txt + '</span>' + locate + '</td>'
             '<td class="path-cell" title="' + dest + '">' + path_short + '</td>'
             '</tr>'
         )
-    rows_html = "\n".join(rows)
+    return "\n".join(rows)
+
+
+def generate_html(records: List[Dict[str, Any]], archive_dir: str, archive_url: str, page_size: int = 200) -> str:
+    """Generate the HTML index page.
+
+    Args:
+        records: List of file records from FileDatabase
+        archive_dir: Local path to the archive directory (for footer text)
+        archive_url: URL / path to use in the "open directory" link
+        page_size: Number of items to show per page (client-side pagination)
+    """
+
+    records = sorted(records, key=lambda r: r.get("timestamp", ""), reverse=True)
+    total_size = sum(r.get("file_size", 0) for r in records)
+
+    cats: Dict[str, Dict[str, Any]] = {}
+    for rec in records:
+        c = rec.get("category", "其他")
+        if c not in cats:
+            cats[c] = {"count": 0, "size": 0}
+        cats[c]["count"] += 1
+        cats[c]["size"] += rec.get("file_size", 0)
+
+    stat_cards = _build_stat_cards(cats)
+    cat_options = _build_cat_options(cats)
+    rows_html = _build_rows(records)
 
     html = (
         '<!DOCTYPE html>\n<html lang="zh-CN"><head>\n'
@@ -185,7 +219,7 @@ def main():
         '<div class="summary">'
         '<div class="summary-card"><div class="num">' + str(len(records)) + '</div><div class="label">累计处理文件</div></div>'
         '<div class="summary-card"><div class="num">' + str(len(cats)) + '</div><div class="label">文件分类数</div></div>'
-        '<div class="summary-card"><div class="num">' + fmt_size(total_size) + '</div><div class="label">归档总大小</div></div>'
+        '<div class="summary-card"><div class="num">' + format_size(total_size) + '</div><div class="label">归档总大小</div></div>'
         '</div>\n'
         '<div class="stats-grid">\n' + stat_cards + '\n</div>\n'
         '<div class="toolbar">'
@@ -200,12 +234,11 @@ def main():
         '<div id="loadMoreWrap" class="load-more" style="display:none">'
         '<button class="btn" onclick="showMore()">加载更多</button>'
         '</div>\n'
-        '<div class="footer">妙喵桌宠 MeowDesk · 共' + str(len(records)) + '个文件 · 数据存储于本地 ' + ARCHIVE_DIR + '</div>\n' + '        <div class="footer" style="margin-top:4px;font-size:12px;color:#64748b">'
+        '<div class="footer">妙喵桌宠 MeowDesk · 共' + str(len(records)) + '个文件 · 数据存储于本地 ' + archive_dir + '</div>\n' + '        <div class="footer" style="margin-top:4px;font-size:12px;color:#64748b">'
         '        <a href="https://github.com/ra1nzzz/MeowDesk" target="_blank">GitHub 仓库</a>'
         '        · 问题反馈 · 欢迎 Star ✨</div>\n'
-        '</div>\n'
         '<script>\n'
-        'var PS=' + str(PAGE_SIZE) + ',vc=0,ar=[];\n'
+        'var PS=' + str(page_size) + ',vc=0,ar=[];\n'
         'function doFilter(catVal){\n'
         '  var kw=document.getElementById("search").value.toLowerCase();\n'
         '  var cat=catVal!==undefined?catVal:document.getElementById("catFilter").value;\n'
@@ -259,7 +292,7 @@ def main():
         '  wrap.querySelector("button").textContent="加载更多 ("+rem+" 条)";\n'
         '}\n'
         'function openArchiveDir(){\n'
-        '  try{if(typeof ActiveXObject!=="undefined"){new ActiveXObject("Shell.Application").Open("' + ARCHIVE_URL + '")}else{alert("归档目录: ' + ARCHIVE_DIR.replace("\\", "\\\\") + '")}}catch(e){alert("请手动打开: ' + ARCHIVE_DIR.replace("\\", "\\\\") + '")}\n'
+        '  try{if(typeof ActiveXObject!=="undefined"){new ActiveXObject("Shell.Application").Open("' + archive_url + '")}else{alert("归档目录：' + archive_dir.replace("\\", "\\\\") + '")}}catch(e){alert("请手动打开：' + archive_dir.replace("\\", "\\\\") + '")}\n'
         '}\n'
         'document.addEventListener("DOMContentLoaded",function(){\n'
         '  document.querySelectorAll(".stat-card").forEach(function(card){\n'
@@ -276,12 +309,80 @@ def main():
         'filterTable=doFilter;\n'
         '</script></body></html>'
     )
+    return html
 
-    out = os.path.join(ARCHIVE_DIR, "index.html")
-    os.makedirs(ARCHIVE_DIR, exist_ok=True)
-    with open(out, "w", encoding="utf-8") as f:
-        f.write(html)
-    print("Generated: %s (%d bytes, %d rows)" % (out, len(html), len(records)))
+
+def write_html_index(
+    records: List[Dict[str, Any]],
+    archive_dir: str,
+    archive_url: str,
+    page_size: int = 200,
+    dry_run: bool = False,
+) -> Optional[str]:
+    """Generate and write the HTML index to ``archive_dir/index.html``.
+
+    Args:
+        records: File records from FileDatabase
+        archive_dir: Target archive directory (also where index.html lands)
+        archive_url: URL / path used in "open directory" action
+        page_size: Client-side pagination size
+        dry_run: If True, return the HTML without writing
+
+    Returns:
+        Path to the generated file, or None if dry_run.
+    """
+
+    html = generate_html(records, archive_dir, archive_url, page_size)
+
+    if dry_run:
+        return None
+
+    out = os.path.join(archive_dir, "index.html")
+    try:
+        os.makedirs(archive_dir, exist_ok=True)
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(html)
+        _log.info("generated HTML index: %s (%d bytes, %d rows)", out, len(html), len(records))
+        return out
+    except OSError as e:
+        _log.error("failed to write HTML index: %s", e)
+        return None
+
+
+def load_records_from_db(db_path: str) -> List[Dict[str, Any]]:
+    """Load raw records from the JSON database file.
+
+    This is a convenience helper for the standalone CLI path.
+    In the GUI, callers should pass ``FileDatabase.records`` directly.
+    """
+
+    if not os.path.exists(db_path):
+        return []
+    try:
+        with open(db_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return [r.to_dict() if hasattr(r, "to_dict") else r for r in data]
+    except (json.JSONDecodeError, OSError) as e:
+        _log.warning("could not load DB %s: %s", db_path, e)
+        return []
+
+
+def main() -> None:
+    """Standalone CLI entry point.
+
+    Reads DB_FILE and ARCHIVE_DIR from environment variables if set,
+    otherwise falls back to defaults next to this module.
+    """
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    db_file = os.environ.get("MEOWDESK_DB", os.path.join(script_dir, "filedb.json"))
+    archive_dir = os.environ.get("MEOWDESK_ARCHIVE", r"D:\meow-file")
+    archive_url = archive_dir.replace("\\", "/")
+
+    records = load_records_from_db(db_file)
+    out = write_html_index(records, archive_dir, archive_url)
+    if out:
+        print("Generated:", out)
 
 
 if __name__ == "__main__":

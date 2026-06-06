@@ -5,7 +5,6 @@
 本类只负责事件路由与平台窗口生命周期。
 """
 
-import importlib.util
 import os
 import sys
 import time
@@ -488,26 +487,19 @@ class MeowWindow:
         return True
 
     def _update_html(self) -> None:
-        try:
-            archive_dir = self.config.archive_dir
-            if not os.path.exists(archive_dir) or not os.access(archive_dir, os.W_OK):
-                _log.warning("archive dir not writable, skipping html generation")
-                return
-            if getattr(sys, "frozen", False):
-                app_dir = os.path.dirname(sys.executable)
-            else:
-                app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            gen_html_path = os.path.join(app_dir, "_gen_html.py")
-            if not os.path.exists(gen_html_path):
-                _log.warning("html generator not found: %s", gen_html_path)
-                return
-            spec = importlib.util.spec_from_file_location("_gen_html", gen_html_path)
-            gen_html = importlib.util.module_from_spec(spec)
-            gen_html.DB_FILE = self.db.db_path
-            gen_html.ARCHIVE_DIR = archive_dir
-            gen_html.ARCHIVE_URL = archive_dir.replace("\\", "/")
-            spec.loader.exec_module(gen_html)
-            gen_html.main()
-            _log.info("html index refreshed")
-        except Exception as e:
-            _log.exception("html generation failed: %s", e)
+        """Regenerate the HTML index in the archive directory."""
+
+        archive_dir = self.config.archive_dir
+        if not os.path.exists(archive_dir) or not os.access(archive_dir, os.W_OK):
+            _log.warning("archive dir not writable, skipping html generation")
+            return
+
+        from ..index_gen import write_html_index
+        records = [r.to_dict() for r in self.db.records]
+        out = write_html_index(
+            records=records,
+            archive_dir=archive_dir,
+            archive_url=archive_dir.replace("\\", "/"),
+        )
+        if out:
+            _log.info("html index written: %s", out)
