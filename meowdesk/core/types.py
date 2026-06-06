@@ -201,6 +201,8 @@ class PeriodConfig:
 @dataclass
 class AppConfig:
     """应用配置"""
+
+    # ---- scalar fields (auto-serialised via dataclasses.fields) ----
     archive_dir: str = ""
     temp_dir: str = ""
     window_opacity: float = 0.85
@@ -208,10 +210,101 @@ class AppConfig:
     screenshot_action: FileAction = FileAction.RECYCLE
     window_position: Optional[Tuple[int, int]] = None
     scale: float = 0.5
+
+    # ---- container / nested fields (require custom (de)serialisation) ----
+    # These are deliberately listed *after* the scalar fields so
+    # :meth:`scalar_field_names` can use ``fields()`` up to this
+    # marker, and the rest are looked up by name from this dict.
     categories: Dict[str, CategoryConfig] = field(default_factory=dict)
     agent: AgentConfig = field(default_factory=AgentConfig)
     reminders: List[Reminder] = field(default_factory=list)
     period: PeriodConfig = field(default_factory=PeriodConfig)
+
+    SCALAR_FIELDS = (
+        "archive_dir",
+        "temp_dir",
+        "window_opacity",
+        "auto_open_html",
+        "screenshot_action",
+        "window_position",
+        "scale",
+    )
+
+    @classmethod
+    def scalar_field_names(cls) -> Tuple[str, ...]:
+        """Names of fields whose value can be ``setattr``'d directly from a
+        primitive in the persisted JSON."""
+
+        return cls.SCALAR_FIELDS
+
+    @classmethod
+    def container_field_names(cls) -> Tuple[str, ...]:
+        """Names of fields that need bespoke deserialisation."""
+
+        return ("categories", "agent", "reminders", "period")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialise the whole config to a JSON-safe dict."""
+
+        data: Dict[str, Any] = {}
+        for name in self.scalar_field_names():
+            value = getattr(self, name)
+            if name == "screenshot_action":
+                data[name] = value.value
+            elif name == "window_position" and value is not None:
+                data[name] = list(value)
+            else:
+                data[name] = value
+
+        data["categories"] = {
+            name: {"exts": cat.exts, "action": cat.action.value}
+            for name, cat in self.categories.items()
+        }
+        data["agent"] = self.agent.to_dict()
+        data["reminders"] = [r.to_dict() for r in self.reminders]
+        data["period"] = self.period.to_dict()
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], defaults: 'AppConfig' = None) -> 'AppConfig':
+        """Reconstruct an ``AppConfig`` from a persisted dict.
+
+        ``defaults`` supplies values for scalar fields that aren't
+        present in ``data``; when omitted, the dataclass defaults are
+        used.  Passing ``defaults`` is the cheap way to inherit a
+        previous config when a new one is missing fields.
+        """
+
+        defaults = defaults or cls()
+        kwargs: Dict[str, Any] = {}
+
+        for name in cls.scalar_field_names():
+            if name in data:
+                value = data[name]
+                if name == "screenshot_action":
+                    kwargs[name] = FileAction(value)
+                elif name == "window_position":
+                    kwargs[name] = tuple(value) if value else None
+                else:
+                    kwargs[name] = value
+            else:
+                kwargs[name] = getattr(defaults, name)
+
+        # container fields
+        categories = defaults.categories.copy()
+        for cat_name, cat_data in data.get("categories", {}).items():
+            categories[cat_name] = CategoryConfig(
+                name=cat_name,
+                exts=cat_data.get("exts", []),
+                action=FileAction(cat_data.get("action", "archive")),
+            )
+        kwargs["categories"] = categories
+
+        kwargs["agent"] = AgentConfig.from_dict(data.get("agent", {}))
+        kwargs["reminders"] = [Reminder.from_dict(r) for r in data.get("reminders", [])]
+        kwargs["period"] = PeriodConfig.from_dict(data.get("period", {}))
+
+        return cls(**kwargs)
 
     @classmethod
     def get_default(cls) -> 'AppConfig':

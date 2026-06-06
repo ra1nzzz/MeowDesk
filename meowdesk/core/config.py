@@ -4,15 +4,11 @@
 """
 
 import os
-import json
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from ..utils import get_logger
 from ..utils.io import atomic_write_json, load_json_with_backup
-from .types import (
-    AppConfig, CategoryConfig, AgentConfig, Reminder, PeriodConfig,
-    FileAction, AgentType
-)
+from .types import AgentConfig, AppConfig, CategoryConfig
 
 
 _log = get_logger(__name__)
@@ -47,60 +43,21 @@ class ConfigManager:
         return self._merge(default, data)
 
     def _merge(self, default: AppConfig, data: Dict[str, Any]) -> AppConfig:
-        """合并配置"""
-        # 基础配置
-        config = AppConfig(
-            archive_dir=data.get('archive_dir', default.archive_dir),
-            temp_dir=data.get('temp_dir', default.temp_dir),
-            window_opacity=data.get('window_opacity', default.window_opacity),
-            auto_open_html=data.get('auto_open_html', default.auto_open_html),
-            screenshot_action=FileAction(data.get('screenshot_action', 'recycle')),
-            window_position=tuple(data['window_position']) if data.get('window_position') else None,
-            scale=data.get('scale', 0.5),
-        )
+        """Merge ``data`` on top of ``default``.
 
-        # 分类配置
-        categories = default.categories.copy()
-        for name, cat_data in data.get('categories', {}).items():
-            categories[name] = CategoryConfig(
-                name=name,
-                exts=cat_data.get('exts', []),
-                action=FileAction(cat_data.get('action', 'archive'))
-            )
-        config.categories = categories
+        Delegates the actual field mapping to
+        :meth:`AppConfig.from_dict`, which is the single source of
+        truth for which fields are serialised and how.
+        """
 
-        # AI Agent 配置
-        config.agent = AgentConfig.from_dict(data.get('agent', {}))
-
-        # 提醒配置
-        config.reminders = [Reminder.from_dict(r) for r in data.get('reminders', [])]
-
-        # 经期提醒配置
-        config.period = PeriodConfig.from_dict(data.get('period', {}))
-
-        return config
+        return AppConfig.from_dict(data, defaults=default)
 
     def _save(self, config: Optional[AppConfig] = None) -> bool:
         """保存配置文件"""
         if config is None:
             config = self._config
 
-        data = {
-            'archive_dir': config.archive_dir,
-            'temp_dir': config.temp_dir,
-            'window_opacity': config.window_opacity,
-            'auto_open_html': config.auto_open_html,
-            'screenshot_action': config.screenshot_action.value,
-            'window_position': list(config.window_position) if config.window_position else None,
-            'scale': config.scale,
-            'categories': {
-                name: {'exts': cat.exts, 'action': cat.action.value}
-                for name, cat in config.categories.items()
-            },
-            'agent': config.agent.to_dict(),
-            'reminders': [r.to_dict() for r in config.reminders],
-            'period': config.period.to_dict()
-        }
+        data = config.to_dict()
 
         try:
             config_dir = os.path.dirname(self.config_path)

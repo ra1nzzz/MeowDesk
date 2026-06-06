@@ -5,6 +5,7 @@ MeowDesk 主程序
 妙喵桌宠 - 智能桌面文件分类归档工具 + AI 助手
 """
 
+import logging
 import os
 import sys
 
@@ -19,8 +20,12 @@ if sys.platform == 'win32':
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from meowdesk import setup_logging
 from meowdesk.core import ConfigManager, FileDatabase
 from meowdesk.ui import MeowWindow
+
+
+_log = logging.getLogger("meowdesk.main")
 
 
 def get_app_dir():
@@ -55,64 +60,50 @@ def get_bundle_dir():
 
 def main():
     """主函数"""
-    print("=" * 60)
-    print("🐱 MeowDesk - 妙喵桌宠")
-    print("=" * 60)
-    print()
-    
+    setup_logging()
+
+    _log.info("=" * 60)
+    _log.info("MeowDesk 妙喵桌宠 starting")
+    _log.info("=" * 60)
+
     # 目录
     app_dir = get_app_dir()
     bundle_dir = get_bundle_dir()
     assets_dir = os.path.join(bundle_dir, 'assets')
-    
-    print(f"应用目录: {app_dir}")
-    print(f"资源目录: {assets_dir}")
-    print()
-    
+
+    _log.info("app dir: %s", app_dir)
+    _log.info("assets dir: %s", assets_dir)
+
     # 配置文件
     config_file = os.path.join(app_dir, 'config.json')
-    print(f"加载配置: {config_file}")
+    _log.info("loading config: %s", config_file)
     config = ConfigManager(config_file)
-    
+
     # 数据库文件（放在应用目录，而非归档目录，避免归档目录不可写导致 DB 无法创建）
     db_file = os.path.join(app_dir, '.filedb.json')
-    print(f"数据库: {db_file}")
+    _log.info("database: %s", db_file)
     db = FileDatabase(db_file)
-    
+
     # 统计信息
     stats = db.get_stats()
-    print(f"已归档文件: {stats['total_files']} 个")
-    print(f"总大小: {stats['total_size'] / 1024 / 1024:.2f} MB")
-    print()
-    
+    _log.info("archived files: %d", stats['total_files'])
+    _log.info("total size: %.2f MB", stats['total_size'] / 1024 / 1024)
+
     # 创建主窗口
-    print("创建窗口...")
+    _log.info("creating window")
     window = MeowWindow(config, db, assets_dir)
-    
+
     try:
         window.create()
-        print("✅ 窗口创建成功")
-        print()
-        print("=" * 60)
-        print("MeowDesk 正在运行...")
-        print("拖入文件到猫猫身上即可自动归档")
-        print("右键点击查看菜单")
-        print("=" * 60)
-        print()
-        
-        # 运行主循环
+        _log.info("window ready; entering main loop")
         window.run()
-        
     except KeyboardInterrupt:
-        print("\n用户中断")
-    except Exception as e:
-        print(f"\n❌ 错误: {e}")
-        import traceback
-        traceback.print_exc()
+        _log.info("interrupted by user")
+    except Exception:
+        _log.exception("fatal error in main loop")
     finally:
-        print("\n正在退出...")
+        _log.info("shutting down")
         window.quit()
-        print("再见！👋")
 
 
 if __name__ == '__main__':
