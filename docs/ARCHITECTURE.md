@@ -239,11 +239,15 @@ AgentGateway.chat
 - ✅ `ui/window.py` 拆分（`WindowState` / `FileDropHandler` / `ReminderChecker`）
 - ✅ 动画循环去重：`AnimationLoop` 抽出 win32/macOS 共享的单帧逻辑
 - ✅ `meowdesk.utils` 包 + `logger.py` + `io.py`（原子写入 + 备份回退）
-- ✅ 所有 `print(...)` 改走 `logging`（包括 `meowdesk_main.py`、`_gen_html.py`）
+- ✅ 所有 `print(...)` 改走 `logging`（包括 `meowdesk_main.py`）
 - ✅ `ConfigManager.set` 拒绝未知 key 并 warning；`get` 用哨兵区分"缺字段"与"显式 None"
 - ✅ `FileHandler.archive_file` 失败时清理残留的空分类目录
 - ✅ `AppConfig` 字段映射自动化：`from_dict` / `to_dict` 把"序列化"和"配置结构"放一处
 - ✅ `_gen_html.py` 迁移为 `meowdesk/index_gen` 模块（正规 import，支持测试）
+
+## 已完成的 P2 改进
+
+- ✅ `ui/window.py` 右键菜单动作抽出为 `ui/menu_actions.py`（平台分支简化）
 
 ## 安全考虑
 
