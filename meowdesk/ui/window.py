@@ -24,6 +24,7 @@ from ..core import (
 from ..utils import get_logger
 from .animation import AnimationManager
 from .animation_loop import AnimationLoop
+from .menu_actions import build_menu_items
 from .window_drop import FileDropHandler
 from .window_reminders import ReminderChecker
 from .window_state import WindowState
@@ -342,113 +343,8 @@ class MeowWindow:
                 self.context_menu.show(cx, cy)
 
     def _show_macos_context_menu(self) -> None:
-        menu_items = [
-            ("打开导航页", self._open_html),
-            ("打开归档目录", self._open_archive_dir),
-            None,
-            ("清理磁盘", self._clean_disk),
-            ("查看日期", self._check_date),
-            ("定期提醒", self._check_reminders_now),
-            ("系统信息", self._system_info),
-            None,
-            ("设置", self._open_settings),
-            ("关于", self._show_about),
-            None,
-            ("退出", self.quit),
-        ]
+        menu_items = build_menu_items(self)
         self.platform_window.show_context_menu(menu_items)
-
-    def _open_html(self) -> None:
-        archive_dir = self.config.archive_dir
-        if not self._ensure_archive_dir_writable(archive_dir):
-            return
-        html_file = os.path.join(archive_dir, "index.html")
-        if not os.path.exists(html_file):
-            self._update_html()
-        if os.path.exists(html_file):
-            webbrowser.open(f"file://{html_file}")
-        else:
-            self.state.show_bubble("导航页生成失败", 60)
-
-    def _open_archive_dir(self) -> None:
-        archive_dir = self.config.archive_dir
-        if os.path.exists(archive_dir):
-            if sys.platform == "darwin":
-                import subprocess
-                subprocess.Popen(["open", archive_dir])
-            elif sys.platform == "win32":
-                os.startfile(archive_dir)
-            else:
-                import subprocess
-                subprocess.Popen(["xdg-open", archive_dir])
-        else:
-            _log.warning("archive dir missing: %s", archive_dir)
-
-    def _clean_disk(self) -> None:
-        from ..agent import CommandRegistry
-        registry = CommandRegistry()
-        result = registry.execute("clean_disk")
-        if result["success"]:
-            data = result["result"]
-            self.state.show_bubble(
-                f"清理: {data['cleaned_files']} 文件, {data['cleaned_size_mb']} MB", 80
-            )
-        else:
-            self.state.show_bubble("清理失败", 40)
-
-    def _check_date(self) -> None:
-        from ..agent import CommandRegistry
-        result = CommandRegistry().execute("check_date")
-        if result["success"]:
-            data = result["result"]
-            self.state.show_bubble(
-                f"{data['weekday']} 距周末{data['days_to_weekend']}天", 80
-            )
-
-    def _check_reminders_now(self) -> None:
-        if not self._reminder_checker:
-            return
-        next_reminder = self._reminder_checker.trigger_immediate()
-        if next_reminder:
-            self.state.show_bubble(
-                f"下一提醒: {next_reminder['name']} ({next_reminder['time']})", 80
-            )
-        else:
-            count = len(self.config.reminders)
-            self.state.show_bubble(f"今日 {count} 个提醒已完成" if count else "暂无提醒，在设置中添加", 80)
-
-    def _system_info(self) -> None:
-        from ..agent import CommandRegistry
-        result = CommandRegistry().execute("system_info")
-        if result["success"]:
-            data = result["result"]
-            self.state.show_bubble(
-                f"CPU {data['cpu_count']}核 {data['cpu_percent']}% | 内存 {data['memory_percent']}%",
-                80,
-            )
-
-    def _open_settings(self) -> None:
-        if sys.platform == "darwin":
-            self._open_macos_settings()
-            return
-        if getattr(sys, "frozen", False):
-            base = os.path.dirname(sys.executable)
-        else:
-            base = os.getcwd()
-        config_file = os.path.join(base, "config.json")
-        if os.path.exists(config_file) and sys.platform == "win32":
-            os.startfile(config_file)
-
-    def _open_macos_settings(self) -> None:
-        try:
-            from .macos_settings import open_settings
-            open_settings(self.config.config_path)
-        except Exception as e:
-            _log.exception("open macos settings failed: %s", e)
-
-    def _show_about(self) -> None:
-        from .. import __version__
-        self.state.show_bubble(f"妙喵桌宠 v{__version__}", 80)
 
     def _on_settings_saved(self) -> None:
         scale = self.config.config.scale
