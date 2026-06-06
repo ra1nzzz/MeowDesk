@@ -118,11 +118,27 @@ class ConfigManager:
         return self._save()
 
     def get(self, key: str, default: Any = None) -> Any:
-        """获取配置项（兼容旧接口）"""
-        return getattr(self._config, key, default)
+        """Get a top-level config field, falling back to ``default`` only
+        when the field is absent.
+
+        A sentinel distinguishes "field missing" from "field present but
+        set to ``None``", so callers that explicitly persist a
+        ``window_position=None`` get back ``None`` instead of the
+        default.
+        """
+
+        sentinel = object()
+        value = getattr(self._config, key, sentinel)
+        return default if value is sentinel else value
 
     def set(self, key: str, value: Any) -> bool:
-        """设置配置项"""
+        """Set a top-level config field, then persist.
+
+        Returns ``False`` (and logs a warning) for keys that don't
+        exist on :class:`AppConfig` — these are almost always typos in
+        the caller, and silently accepting them would mask bugs.
+        """
+
         if not hasattr(self._config, key):
             _log.warning("set() rejected unknown key: %r", key)
             return False

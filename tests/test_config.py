@@ -104,3 +104,27 @@ def test_get_returns_value_or_default(config_path):
     config = ConfigManager(str(config_path))
     assert config.get("archive_dir") == config.archive_dir
     assert config.get("missing-key", "fallback") == "fallback"
+
+
+def test_get_returns_none_when_value_is_explicitly_none(config_path):
+    config = ConfigManager(str(config_path))
+    # window_position defaults to None — get() should return None,
+    # not be confused with "missing key"
+    assert config.get("window_position", "fallback") is None
+
+
+def test_set_unknown_key_warns_and_returns_false(config_path, caplog):
+    import logging
+    config = ConfigManager(str(config_path))
+    with caplog.at_level(logging.WARNING, logger="meowdesk.core.config"):
+        ok = config.set("typo_key", "value")
+    assert ok is False
+    assert "typo_key" in caplog.text
+
+
+def test_set_unknown_key_does_not_persist(config_path, monkeypatch):
+    config = ConfigManager(str(config_path))
+    save_calls = []
+    monkeypatch.setattr(config, "save", lambda: save_calls.append(1) or True)
+    config.set("typo_key", "value")
+    assert save_calls == []

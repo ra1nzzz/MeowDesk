@@ -34,12 +34,18 @@ class FileHandler:
         Returns:
             ArchiveResult 对象
         """
+
         try:
             dest_path = self._get_archive_path(filepath, category)
-            dest_path = self._handle_duplicate(dest_path)
+        except OSError as e:
+            return ArchiveResult.fail(f"无法创建归档目录: {e}")
+
+        dest_path = self._handle_duplicate(dest_path)
+        try:
             shutil.move(filepath, dest_path)
             return ArchiveResult.ok(dest_path)
         except Exception as e:
+            self._cleanup_empty_category_dir(dest_path)
             return ArchiveResult.fail(str(e))
 
     def recycle_file(self, filepath: str) -> ArchiveResult:
@@ -78,6 +84,28 @@ class FileHandler:
             if not os.path.exists(new_path):
                 return new_path
             counter += 1
+
+    def _cleanup_empty_category_dir(self, dest_path: str) -> None:
+        """Best-effort removal of an empty ``<archive>/<category>/<YYYY-MM>``
+        directory that may have been created by :meth:`_get_archive_path`
+        before a move failed.
+
+        Walks up the path and ``os.rmdir`` s every empty parent up to
+        ``self.archive_dir``.  Stops at the first non-empty parent so
+        we never delete directories the user filled with real content.
+        """
+
+        current = os.path.dirname(dest_path)
+        archive_root = os.path.abspath(self.archive_dir)
+        while True:
+            current_abs = os.path.abspath(current)
+            if current_abs == archive_root or not current_abs.startswith(archive_root + os.sep):
+                return
+            try:
+                os.rmdir(current)
+            except OSError:
+                return
+            current = os.path.dirname(current)
 
     @staticmethod
     def calculate_md5(filepath: str, chunk_size: int = 8192) -> str:

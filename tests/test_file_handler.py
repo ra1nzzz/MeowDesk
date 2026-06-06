@@ -54,6 +54,43 @@ def test_archive_file_reports_failure_on_missing_source(handler):
     assert result.error
 
 
+def test_archive_failure_does_not_leave_empty_category_dir(handler, tmp_path):
+    """A failed archive should not leave an empty
+    ``<archive>/<category>/<YYYY-MM>/`` behind."""
+
+    src = tmp_path / "src.txt"
+    src.write_text("data", encoding="utf-8")
+
+    result = handler.archive_file(str(src), "文档")
+    assert result.success is True
+    # The successful case *should* create the directory
+    assert os.path.isdir(os.path.join(handler.archive_dir, "文档"))
+
+    # Now simulate a failure: ask the handler to archive a missing
+    # file. The category directory was created on the previous call
+    # and is no longer empty, so cleanup must not touch it.
+    fail_result = handler.archive_file("/no/such/missing.txt", "文档")
+    assert fail_result.success is False
+    assert os.path.isdir(os.path.join(handler.archive_dir, "文档"))
+
+
+def test_archive_failure_cleans_up_fresh_category_dir(handler, tmp_path):
+    """If the move fails and the category dir is otherwise empty,
+    it should be removed (best-effort cleanup)."""
+
+    src = tmp_path / "src.txt"
+    src.write_text("data", encoding="utf-8")
+
+    # Pre-condition: no 文档/ directory yet
+    assert not os.path.exists(os.path.join(handler.archive_dir, "文档"))
+
+    fail_result = handler.archive_file("/no/such/missing.txt", "文档")
+    assert fail_result.success is False
+    # Best-effort: we don't require this to pass if the OS rmdir is
+    # restricted, but on tmp_path it should succeed.
+    assert not os.path.exists(os.path.join(handler.archive_dir, "文档"))
+
+
 def test_calculate_md5_matches_known_value(handler, tmp_path):
     f = tmp_path / "checksum.txt"
     f.write_text("abc", encoding="utf-8")
