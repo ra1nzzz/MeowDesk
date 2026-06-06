@@ -8,6 +8,14 @@
 
 ---
 
+## 平台支持状态
+
+| 平台 | 状态 | 说明 |
+|------|------|------|
+| **Windows 10/11** | 正式支持 | 完整功能、托盘、拖放 |
+| **macOS (Apple Silicon / Intel)** | 实验支持 | 透明窗口、拖放、托盘已可用，CI 仅做导入校验 |
+| **Linux** | 社区维护 | 桌面集成需自行调整 |
+
 ## 功能
 
 - **悬浮拖拽区** — 桌面右上角猫猫图标，拖入文件即自动整理
@@ -16,6 +24,7 @@
 - **HTML 导航** — 自动生成暗色主题文件索引页面，支持搜索、分类筛选、定位文件
 - **多种动画** — idle / happy / shy / surprised / sleeping 等状态动画
 - **系统托盘** — 最小化到托盘，开机自启动（通过 install.py）
+- **AI 助手（实验）** — 可选接入本地 Agent（OpenClaw / Hermes / 自定义 HTTP）
 
 ---
 
@@ -24,12 +33,14 @@
 ### 方式一：直接运行（需 Python）
 
 ```bash
-# 双击启动（推荐）
-启动妙喵桌宠.bat
+# 安装依赖
+pip install -r requirements.txt
 
-# 或命令行
-python lingxi_droplet.py
+# 启动主程序
+python meowdesk_main.py
 ```
+
+Windows 上也可双击 `启动妙喵桌宠.bat`。
 
 ### 方式二：一键安装
 
@@ -41,7 +52,7 @@ python install.py uninstall  # 卸载
 
 ### 方式三：打包 EXE（无需 Python）
 
-从 [Releases](https://github.com/ra1nzzz/MeowDesk/releases) 下载 `妙喵桌宠.exe`，双击即可运行。
+从 [Releases](https://github.com/ra1nzzz/MeowDesk/releases) 下载 `MeowDesk-standalone.exe`，双击即可运行。
 
 ---
 
@@ -94,16 +105,18 @@ D:\meow-file\           ← 归档根目录
 
 | 依赖 | 用途 | 安装 |
 |------|------|------|
-| **Python 3.12+** | 运行环境 | — |
+| **Python 3.11+** | 运行环境 | — |
 | **Pillow** | 图像处理 / APNG 解析 | `pip install Pillow` |
 | **send2trash** | 安全回收站 | `pip install send2trash` |
-| **windnd** | 拖拽支持 | `pip install windnd` |
+| **windnd** | Windows 拖拽支持 | `pip install windnd` |
+| **pytest** | 开发与运行单元测试 | `pip install pytest` |
 
 可选：
 
 | 依赖 | 用途 | 安装 |
 |------|------|------|
-| **PyQt5** | Qt 图形界面版 | `pip install PyQt5` |
+| **pyobjc-framework-Cocoa** | macOS 平台支持 | `pip install pyobjc-framework-Cocoa` |
+| **psutil** | 系统信息命令的详细指标 | `pip install psutil` |
 | **PyInstaller** | 打包 EXE | `pip install pyinstaller` |
 
 ## 使用技巧
@@ -118,10 +131,31 @@ D:\meow-file\           ← 归档根目录
 
 ```bash
 pip install pyinstaller
-pyinstaller 妙喵桌宠.spec
+pyinstaller meowdesk.spec
 ```
 
-输出在 `dist/妙喵桌宠/` 目录。
+输出在 `dist/MeowDesk/` 目录。
+
+## 开发与测试
+
+```bash
+# 安装测试依赖
+pip install -r requirements.txt
+pip install pytest
+
+# 运行单元测试
+pytest -q
+```
+
+测试位于 `tests/`，覆盖核心模块：
+
+- `tests/test_config.py` — 配置加载/合并/保存
+- `tests/test_database.py` — 文件数据库增删查统计
+- `tests/test_classifier.py` — 文件分类与截图识别
+- `tests/test_file_handler.py` — 归档/重名/MD5
+- `tests/test_commands.py` — 内置命令的纯逻辑分支
+
+CI 会在每次 push 和 PR 上自动运行测试。
 
 ## 赞赏支持
 

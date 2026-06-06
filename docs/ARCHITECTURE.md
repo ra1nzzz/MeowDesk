@@ -4,130 +4,196 @@
 
 ```
 meowdesk/
-├── core/                   # 核心功能模块
-│   ├── __init__.py
-│   ├── config.py          # 配置管理
-│   ├── database.py        # 文件数据库
-│   ├── classifier.py      # 文件分类器
-│   └── file_handler.py    # 文件处理
+├── __init__.py
 │
-├── agent/                  # AI Agent 集成
+├── core/                       # 与平台无关的核心逻辑
 │   ├── __init__.py
-│   ├── gateway.py         # Agent 网关
-│   └── commands.py        # 内置命令
+│   ├── types.py                # 共享 dataclass / enum（AppConfig、FileRecord、...）
+│   ├── config.py               # ConfigManager：配置加载/合并/保存
+│   ├── database.py             # FileDatabase：JSON 文件形式的记录库
+│   ├── classifier.py           # FileClassifier：分类与截图识别
+│   └── file_handler.py         # FileHandler：归档/回收/MD5
 │
-├── platform/               # 跨平台抽象层
+├── agent/                      # AI Agent 集成
 │   ├── __init__.py
-│   ├── base.py            # 平台基类
-│   ├── windows.py         # Windows 实现
-│   └── macos.py           # macOS 实现
+│   ├── gateway.py              # AgentGateway：HTTP + CLI 适配
+│   └── commands.py             # CommandRegistry：内置命令注册表
 │
-├── ui/                     # UI 模块（待实现）
+├── platform/                   # 平台抽象层
 │   ├── __init__.py
-│   ├── window.py          # 窗口管理
-│   ├── animation.py       # 动画系统
-│   ├── tray.py            # 系统托盘
-│   └── dialog.py          # 对话框
+│   ├── base.py                 # PlatformWindow 抽象基类
+│   ├── windows.py              # WindowsWindow（windnd + UpdateLayeredWindow）
+│   └── macos.py                # MacOSWindow（PyObjC + Cocoa）
 │
-└── utils/                  # 工具模块（待实现）
-    ├── __init__.py
-    ├── logger.py          # 日志系统
-    └── helpers.py         # 辅助函数
+├── ui/                         # Tk 风格 UI 组件
+│   ├── __init__.py             # 顶层导出（ContextMenu / Tray / Settings 等按需懒加载）
+│   ├── window.py               # MeowWindow：主控制器（事件路由 + 平台窗口生命周期）
+│   ├── window_state.py         # WindowState：状态机 + timer + 闲逛行为
+│   ├── window_drop.py          # FileDropHandler：拖入文件 → 分类 → 归档/回收
+│   ├── window_reminders.py     # ReminderChecker：定时提醒 + 经期提醒
+│   ├── animation.py            # AnimationManager：APNG 帧解析
+│   ├── animation_loop.py       # AnimationLoop：单帧 tick（state/wander/render），win32 与 macOS 共享
+│   ├── tray.py                 # SystemTray：系统托盘
+│   ├── menu.py                 # ContextMenu：右键菜单
+│   ├── settings.py             # SettingsPanel：设置面板
+│   ├── chat.py                 # ChatWindow：AI 对话窗口
+│   └── macos_settings.py       # macOS 专属设置面板
+│
+├── utils/                      # 跨模块工具
+│   ├── __init__.py             # 导出 get_logger / atomic_write_* / load_json_with_backup
+│   ├── logger.py               # 配置 meowdesk.* 日志器
+│   └── io.py                   # atomic_write_text / atomic_write_json / load_json_with_backup
+│
+└── （入口）meowdesk_main.py    # 启动主程序
 ```
+
+> `ui/dialog.py` 与 `utils/` 子目录已合并入上面的结构。`window.py` 在 P1 重构里
+> 拆成了 `MeowWindow + WindowState + FileDropHandler + ReminderChecker`，每个模块
+> 都可独立单元测试。
 
 ## 模块说明
 
 ### 1. Core 核心模块
 
 #### ConfigManager
-- 管理应用配置（config.json）
-- 支持默认配置和用户配置合并
-- 提供配置读写接口
+- 管理应用配置（`config.json`）
+- 默认配置与用户配置合并
+- 兼容旧接口 `get` / `set`
+- 见 `meowdesk/core/config.py`
 
 #### FileDatabase
-- 管理文件归档记录
-- 支持搜索、统计、查询
-- JSON 格式存储（未来可迁移到 SQLite）
+- 文件归档记录管理
+- 支持搜索、统计、最近记录
+- JSON 格式存储（计划迁移到 SQLite）
+- 见 `meowdesk/core/database.py`
 
 #### FileClassifier
-- 智能文件分类
-- 截图识别（文件名、路径、分辨率）
+- 智能文件分类（按扩展名）
+- 截图识别（文件名 / 路径 / 屏幕分辨率）
 - 可扩展的分类规则
+- 见 `meowdesk/core/classifier.py`
 
 #### FileHandler
-- 文件归档操作
-- 回收站管理
-- 重名文件处理
-- MD5 计算
+- 文件归档（按 `类型/年-月/`）
+- 回收站（`send2trash`）
+- 重名文件加序号
+- MD5 / 文件大小工具方法
+- 见 `meowdesk/core/file_handler.py`
+
+#### types
+- 共享 dataclass：`AppConfig`、`CategoryConfig`、`AgentConfig`、`Reminder`、`PeriodConfig`、`PeriodRecord`、`ClassifyResult`、`FileRecord`、`ArchiveResult`、`ProcessResult`
+- 共享 enum：`FileAction`、`AgentType`、`Platform`
+- 平台检测工具 `get_platform()`
+- 见 `meowdesk/core/types.py`
 
 ### 2. Agent AI 集成模块
 
 #### AgentGateway
 - 统一接口连接本地 AI Agent
-- 支持 OpenClaw、Hermes 等
-- 提供对话、命令执行、智能建议
+- 优先 HTTP，回退到 CLI（OpenClaw）
+- 健康检查自动尝试多路径
+- 见 `meowdesk/agent/gateway.py`
 
 #### CommandRegistry
 - 内置命令注册表
-- 常用工具命令：
-  - `clean_disk`: 磁盘清理
-  - `check_date`: 日期查询
-  - `check_holidays`: 假期提醒
-  - `period_reminder`: 经期提醒
-  - `system_info`: 系统信息
-  - `open_app`: 打开应用
+- 装饰器 API：`@registry.register_command('name')`
+- 常用命令：
+  - `clean_disk`：清理超过 7 天的临时文件
+  - `check_date`：日期 / 距离周末 / 距离月底
+  - `check_holidays`：假期倒计时
+  - `period_reminder`：经期提醒
+  - `system_info`：系统信息（依赖 psutil）
+  - `open_app`：打开应用
+- 见 `meowdesk/agent/commands.py`
 
 ### 3. Platform 跨平台模块
 
 #### PlatformWindow (基类)
 - 定义统一的窗口接口
 - 抽象平台差异
+- 见 `meowdesk/platform/base.py`
 
 #### WindowsWindow
 - Windows 平台实现
-- 使用 UpdateLayeredWindow 实现透明窗口
-- 支持 windnd 拖放
+- `windnd` 拖放
+- `UpdateLayeredWindow` 透明渲染
+- 见 `meowdesk/platform/windows.py`
 
 #### MacOSWindow
 - macOS 平台实现
-- 使用 PyObjC + Cocoa
-- 支持原生拖放
+- `PyObjC + Cocoa` 透明窗口
+- 原生拖放（`draggingEntered` / `performDragOperation_`）
+- 见 `meowdesk/platform/macos.py`
 
 ## 数据流
 
 ```
 用户拖入文件
     ↓
-PlatformWindow.on_drop
+PlatformWindow.on_drop (Windows: windnd | macOS: draggingEntered)
+    ↓
+MeowWindow._on_files_dropped
+    ↓
+FileDropHandler.receive (utils/logger 记录条数)
+    ↓
+后台线程 → FileDropHandler._process
+    ↓
+FileDropHandler._process_one
     ↓
 FileClassifier.classify (分类)
     ↓
 FileHandler.archive_file / recycle_file (处理)
     ↓
-FileDatabase.add_record (记录)
+FileDatabase.add_record (记录；保存走 atomic_write_json)
     ↓
-生成 HTML 索引
+on_finished 回调 → _update_html → 生成 HTML 索引（_gen_html.py 脚本）
 ```
+
+## 状态机
+
+`MeowWindow` 不再直接持有 `state` / `frame_index` / `timer` 字段 —— 这些都被
+`WindowState` 收编。每个动画 tick 由 `MeowWindow._animate` 触发一次
+`WindowState.update()` + `WindowState.wander_tick()`，再由
+`ReminderChecker.tick()` 决定要不要弹气泡。`WindowState.enter_state(SHY, timer=N)`
+是各事件（点击、拖入、拖动结束）切换状态与设置 timer 的统一入口。
+
+## 动画循环
+
+`AnimationLoop` 抽出了 `_animate` 与 `_macos_animate` 共享的每帧工作
+（状态机推进、闲逛、提醒 tick、取帧、画气泡、尺寸同步、渲染），
+两个平台层只负责**调度**——win32 用 `root.after`，macOS 用 `NSTimer`。
+设置保存时如果 `scale` 变化需要重建 `AnimationManager`，`MeowWindow` 会同步
+重建 `AnimationLoop`，让尺寸缓存与新动画对齐。
+
+## 持久化
+
+- `ConfigManager._save` / `FileDatabase.save` 走 `meowdesk.utils.io.atomic_write_json`：
+  写入临时文件 → `os.fsync` → `os.replace`，避免半写文件。
+- 加载时若 JSON 损坏，`load_json_with_backup` 会把损坏文件旋转为 `.bak`，
+  然后尝试 `.bak` / `.bak.1` / `.bak.2` 的回退链，全部失败再返回 `None`。
+- 所有 `print(...)` 都改走 `meowdesk.utils.logger.get_logger(__name__)`，错误
+  信息不再混杂到 stdout。
 
 ## Agent 交互流程
 
 ```
-用户双击宠物
+用户双击宠物 / 触发对话
     ↓
-显示对话框
+ChatWindow 弹出
     ↓
-用户输入 / 选择命令
+用户输入消息或点击快捷命令
     ↓
-AgentGateway.chat / execute_command
+AgentGateway.chat
     ↓
-本地 Agent 处理
+1) HTTP POST /v1/chat/completions
+2) 失败时回退到 CLI（OpenClaw）
     ↓
 返回结果并显示
 ```
 
 ## 配置文件
 
-### config.json
+### `config.json`
 ```json
 {
   "archive_dir": "D:\\meow-file",
@@ -136,6 +202,7 @@ AgentGateway.chat / execute_command
   "auto_open_html": false,
   "screenshot_action": "recycle",
   "window_position": [1516, 430],
+  "scale": 0.5,
   "categories": { ... },
   "agent": {
     "enabled": true,
@@ -144,31 +211,41 @@ AgentGateway.chat / execute_command
     "api_key": "",
     "timeout": 30
   },
-  "period_reminder": {
+  "reminders": [],
+  "period": {
     "enabled": false,
-    "last_date": "2026-05-01",
-    "cycle_days": 28
+    "cycle_days": 28,
+    "period_days": 5,
+    "last_period_start": "",
+    "records": []
   }
 }
 ```
 
 ## 扩展点
 
-1. **自定义分类器**：继承 `FileClassifier` 实现自定义规则
-2. **自定义命令**：通过 `CommandRegistry.register()` 注册
+1. **自定义分类器**：继承 `FileClassifier` 覆盖 `classify` / `_is_screenshot`
+2. **自定义命令**：`@registry.register_command('name')` 注册
 3. **新平台支持**：实现 `PlatformWindow` 接口
-4. **Agent 适配器**：实现 `AgentGateway` 的协议转换
+4. **Agent 适配器**：在 `AgentGateway` 增加协议分支
 
-## 性能优化
+## 已知架构问题（待改进）
 
-1. **异步文件操作**：使用 `threading` 或 `asyncio`
-2. **增量 HTML 生成**：只更新新增记录
-3. **APNG 懒加载**：按需解码帧
-4. **数据库索引**：迁移到 SQLite 后添加索引
+1. `ConfigManager.set` 拒绝未知 key 时仅返回 `False`，不抛异常 —— 后续可改成
+   警告 + 抛 `AttributeError` 兼顾兼容。
+2. `FileHandler.archive_file` 在分类目录无法创建时仍会返回 `success=True` 的边界
+   情况（取决于具体错误），需要更细粒度的失败检测。
+
+## 已完成的 P1 改进
+
+- ✅ `ui/window.py` 拆分（`WindowState` / `FileDropHandler` / `ReminderChecker`）
+- ✅ 动画循环去重：`AnimationLoop` 抽出 win32/macOS 共享的单帧逻辑
+- ✅ `meowdesk.utils` 包 + `logger.py` + `io.py`（原子写入 + 备份回退）
+- ✅ 所有 `print(...)` 改走 `logging`（详见 `meowdesk.utils.logger`）
 
 ## 安全考虑
 
-1. **路径验证**：防止路径遍历攻击
+1. **路径验证**：未来需要防止路径遍历攻击
 2. **文件大小限制**：避免处理超大文件
 3. **权限检查**：确保有足够权限操作文件
-4. **Agent 认证**：API Key 验证
+4. **Agent 认证**：API Key 验证（已支持 `Authorization: Bearer` 头）

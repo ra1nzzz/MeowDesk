@@ -7,10 +7,15 @@ import os
 import json
 from typing import Dict, Any, Optional
 
+from ..utils import get_logger
+from ..utils.io import atomic_write_json, load_json_with_backup
 from .types import (
     AppConfig, CategoryConfig, AgentConfig, Reminder, PeriodConfig,
     FileAction, AgentType
 )
+
+
+_log = get_logger(__name__)
 
 
 class ConfigManager:
@@ -30,16 +35,16 @@ class ConfigManager:
         default = AppConfig.get_default()
 
         if not os.path.exists(self.config_path):
+            _log.info("config file missing, generating defaults at %s", self.config_path)
             self._save(default)
             return default
 
-        try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            return self._merge(default, data)
-        except Exception as e:
-            print(f"配置加载失败: {e}，使用默认配置")
+        data = load_json_with_backup(self.config_path)
+        if data is None:
+            _log.warning("config file unreadable, falling back to defaults: %s", self.config_path)
             return default
+
+        return self._merge(default, data)
 
     def _merge(self, default: AppConfig, data: Dict[str, Any]) -> AppConfig:
         """合并配置"""
@@ -102,11 +107,10 @@ class ConfigManager:
             if config_dir:
                 os.makedirs(config_dir, exist_ok=True)
 
-            with open(self.config_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            atomic_write_json(self.config_path, data)
             return True
-        except Exception as e:
-            print(f"配置保存失败: {e}")
+        except (OSError, TypeError, ValueError) as e:
+            _log.error("配置保存失败: %s", e)
             return False
 
     def save(self) -> bool:
@@ -119,10 +123,11 @@ class ConfigManager:
 
     def set(self, key: str, value: Any) -> bool:
         """设置配置项"""
-        if hasattr(self._config, key):
-            setattr(self._config, key, value)
-            return self.save()
-        return False
+        if not hasattr(self._config, key):
+            _log.warning("set() rejected unknown key: %r", key)
+            return False
+        setattr(self._config, key, value)
+        return self.save()
 
     # ========== 便捷方法 ==========
 

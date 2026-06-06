@@ -4,11 +4,15 @@
 """
 
 import os
-import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
+from ..utils import get_logger
+from ..utils.io import atomic_write_json, load_json_with_backup
 from .types import FileRecord
+
+
+_log = get_logger(__name__)
 
 
 class FileDatabase:
@@ -25,15 +29,18 @@ class FileDatabase:
             self.records = []
             return True
 
-        try:
-            with open(self.db_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            self.records = [FileRecord.from_dict(r) for r in data]
-            return True
-        except Exception as e:
-            print(f"数据库加载失败: {e}")
+        data = load_json_with_backup(self.db_path)
+        if data is None:
+            _log.warning("database file unreadable, starting empty: %s", self.db_path)
             self.records = []
             return False
+        if not isinstance(data, list):
+            _log.warning("database root is not a list, starting empty: %s", self.db_path)
+            self.records = []
+            return False
+
+        self.records = [FileRecord.from_dict(r) for r in data]
+        return True
 
     def save(self) -> bool:
         """保存数据库"""
@@ -43,11 +50,10 @@ class FileDatabase:
                 os.makedirs(db_dir, exist_ok=True)
 
             data = [r.to_dict() for r in self.records]
-            with open(self.db_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            atomic_write_json(self.db_path, data)
             return True
-        except Exception as e:
-            print(f"数据库保存失败: {e}")
+        except (OSError, TypeError, ValueError) as e:
+            _log.error("数据库保存失败: %s", e)
             return False
 
     def add_record(self, record: FileRecord) -> bool:

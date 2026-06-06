@@ -225,10 +225,10 @@ class CommandRegistry:
             next_date = last_date + timedelta(days=cycle_days)
             
             status = 'normal'
-            if days_until_next <= 3:
-                status = 'coming_soon'
-            elif days_until_next < 0:
+            if days_until_next < 0:
                 status = 'overdue'
+            elif days_until_next <= 3:
+                status = 'coming_soon'
             
             return {
                 'last_date': last_date_str,
