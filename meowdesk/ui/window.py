@@ -24,7 +24,7 @@ from ..core import (
 from ..utils import get_logger
 from .animation import AnimationManager
 from .animation_loop import AnimationLoop
-from .bubble_font import load_bubble_font
+from .bubble_renderer import draw_bubble
 from .menu_actions import build_menu_items, ensure_archive_dir_writable
 from .window_drop import FileDropHandler
 from .window_reminders import ReminderChecker
@@ -222,47 +222,7 @@ class MeowWindow:
         self._animation_loop.tick()
 
     def _draw_bubble(self, frame: Image.Image, text: str) -> Image.Image:
-        from PIL import ImageDraw
-
-        font = load_bubble_font(14)
-        if font is None:
-            font = ImageFont.load_default()
-
-        dummy_draw = ImageDraw.Draw(frame)
-        bbox = dummy_draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        padding = 8
-        bubble_height = text_height + padding * 2
-        bubble_width = text_width + padding * 2 + 20
-
-        new_width = max(frame.width, bubble_width)
-        new_height = frame.height + bubble_height + 8
-        new_frame = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
-        cat_x = (new_width - frame.width) // 2
-        new_frame.paste(frame, (cat_x, bubble_height + 8))
-
-        draw = ImageDraw.Draw(new_frame)
-        bubble_x = (new_width - bubble_width) // 2
-        bubble_y = 0
-        draw.rounded_rectangle(
-            [bubble_x, bubble_y, bubble_x + bubble_width, bubble_y + bubble_height],
-            radius=8,
-            fill=(30, 30, 50, 220),
-            outline=(100, 100, 180, 180),
-            width=1,
-        )
-        text_x = bubble_x + padding + 10
-        text_y = bubble_y + padding
-        draw.text((text_x, text_y), text, fill=(255, 255, 255, 255), font=font)
-
-        arrow_cx = new_width // 2
-        arrow_top = bubble_y + bubble_height
-        draw.polygon(
-            [(arrow_cx - 6, arrow_top), (arrow_cx + 6, arrow_top), (arrow_cx, arrow_top + 8)],
-            fill=(30, 30, 50, 220),
-        )
-        return new_frame
+        return draw_bubble(frame, text)
 
     def _on_click(self) -> None:
         self.state.touch()

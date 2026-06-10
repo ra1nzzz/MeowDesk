@@ -248,6 +248,8 @@ AgentGateway.chat
 ## 已完成的 P2 改进
 
 - ✅ `ui/window.py` 右键菜单动作抽出为 `ui/menu_actions.py`（平台分支简化）
+- ✅ 平台字体加载抽出为 `ui/bubble_font.py`
+- ✅ `ensure_archive_dir_writable` 统一为模块函数（window.py 360 行）
 
 ## 安全考虑
 
