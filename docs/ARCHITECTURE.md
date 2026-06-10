@@ -249,7 +249,8 @@ AgentGateway.chat
 
 - ✅ `ui/window.py` 右键菜单动作抽出为 `ui/menu_actions.py`（平台分支简化）
 - ✅ 平台字体加载抽出为 `ui/bubble_font.py`
-- ✅ `ensure_archive_dir_writable` 统一为模块函数（window.py 360 行）
+- ✅ `ensure_archive_dir_writable` 统一为模块函数
+- ✅ 气泡绘制抽出为 `ui/bubble_renderer.py`（window.py 320 行，原始 513 行）
 
 ## 安全考虑
 
