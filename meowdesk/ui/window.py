@@ -27,6 +27,7 @@ from .animation_loop import AnimationLoop
 from .bubble_renderer import draw_bubble
 from .macos_animation import MacOSAnimationTimer
 from .menu_actions import build_menu_items, ensure_archive_dir_writable
+from .platform_factory import create_platform_window
 from .win32_animation import Win32AnimationTimer
 from .window_drop import FileDropHandler
 from .window_reminders import ReminderChecker
@@ -82,14 +83,7 @@ class MeowWindow:
 
         self.window_width, self.window_height = self.animation.get_frame_size(AnimationManager.IDLE)
 
-        if sys.platform == "win32":
-            from ..platform.windows import WindowsWindow
-            self.platform_window = WindowsWindow(self.window_width, self.window_height)
-        elif sys.platform == "darwin":
-            from ..platform.macos import MacOSWindow
-            self.platform_window = MacOSWindow(self.window_width, self.window_height)
-        else:
-            raise NotImplementedError(f"不支持的平台: {sys.platform}")
+        self.platform_window = create_platform_window(self.window_width, self.window_height)
 
         self.platform_window.create()
         self.platform_window.on_drop(self._on_files_dropped)
