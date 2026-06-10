@@ -25,6 +25,7 @@ from ..utils import get_logger
 from .animation import AnimationManager
 from .animation_loop import AnimationLoop
 from .bubble_renderer import draw_bubble
+from .macos_animation import MacOSAnimationTimer
 from .menu_actions import build_menu_items, ensure_archive_dir_writable
 from .window_drop import FileDropHandler
 from .window_reminders import ReminderChecker
@@ -66,13 +67,13 @@ class MeowWindow:
         self.window_height = 0
 
         self.click_times: List[float] = []
-        self.macos_timer = None
 
         self.on_quit_callback: Optional[Callable] = None
 
         self._drop_handler: Optional[FileDropHandler] = None
         self._reminder_checker: Optional[ReminderChecker] = None
         self._animation_loop: Optional[AnimationLoop] = None
+        self._macos_timer: Optional[MacOSAnimationTimer] = None
 
     def create(self) -> None:
         """Create the platform window and wire up callbacks."""
@@ -135,7 +136,8 @@ class MeowWindow:
             if hasattr(self.platform_window, "root") and self.platform_window.root:
                 self.platform_window.root.after(200, self._animate)
         elif sys.platform == "darwin":
-            self._start_macos_animation()
+            self._macos_timer = MacOSAnimationTimer(self)
+            self._macos_timer.start()
 
     def run(self) -> None:
         if self.platform_window:
@@ -194,32 +196,6 @@ class MeowWindow:
 
         if getattr(self.platform_window, "root", None):
             self.platform_window.root.after(int(loop.frame_duration()), self._animate)
-
-    def _start_macos_animation(self) -> None:
-        if sys.platform != "darwin":
-            return
-        from Foundation import NSTimer, NSRunLoop
-        from AppKit import NSEventTrackingRunLoopMode
-
-        if getattr(self, "macos_timer", None):
-            self.macos_timer.invalidate()
-            self.macos_timer = None
-
-        self.macos_timer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            0.08, self.platform_window.view, "animationTick:", None, True
-        )
-        NSRunLoop.currentRunLoop().addTimer_forMode_(
-            self.macos_timer, NSEventTrackingRunLoopMode
-        )
-        self.platform_window.view.animation_callback = self._macos_animate
-
-    def _macos_animate(self) -> None:
-        if sys.platform == "darwin":
-            from .macos_settings import check_settings_saved
-            if check_settings_saved():
-                self.config.config = self.config.load()
-                self._on_settings_saved()
-        self._animation_loop.tick()
 
     def _draw_bubble(self, frame: Image.Image, text: str) -> Image.Image:
         return draw_bubble(frame, text)
