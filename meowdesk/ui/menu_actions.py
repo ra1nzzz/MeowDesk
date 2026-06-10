@@ -52,7 +52,7 @@ def action_open_html(window: "MeowWindow") -> None:
     """Open the HTML index in the default browser."""
 
     archive_dir = window.config.archive_dir
-    if not _ensure_archive_dir_writable(window, archive_dir):
+    if not ensure_archive_dir_writable(window, archive_dir):
         return
     html_file = os.path.join(archive_dir, "index.html")
     if not os.path.exists(html_file):
@@ -158,7 +158,7 @@ def action_show_about(window: "MeowWindow") -> None:
     window.state.show_bubble(f"妙喵桌宠 v{__version__}", 80)
 
 
-def _ensure_archive_dir_writable(window: "MeowWindow", archive_dir: str) -> bool:
+def ensure_archive_dir_writable(window: "MeowWindow", archive_dir: str) -> bool:
     """Check archive dir writability, handling macOS TCC if needed."""
 
     if sys.platform == "darwin" and hasattr(window.platform_window, "check_directory_writable"):

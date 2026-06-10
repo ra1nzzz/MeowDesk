@@ -24,7 +24,8 @@ from ..core import (
 from ..utils import get_logger
 from .animation import AnimationManager
 from .animation_loop import AnimationLoop
-from .menu_actions import build_menu_items
+from .bubble_font import load_bubble_font
+from .menu_actions import build_menu_items, ensure_archive_dir_writable
 from .window_drop import FileDropHandler
 from .window_reminders import ReminderChecker
 from .window_state import WindowState
@@ -123,7 +124,7 @@ class MeowWindow:
             state=self.state,
             show_bubble=self.state.show_bubble,
             on_finished=self._update_html,
-            check_archive_writable=self._ensure_archive_dir_writable,
+            check_archive_writable=lambda arc: ensure_archive_dir_writable(self, arc),
         )
         self._reminder_checker = ReminderChecker(
             config=self.config, show_bubble=self.state.show_bubble
@@ -221,28 +222,9 @@ class MeowWindow:
         self._animation_loop.tick()
 
     def _draw_bubble(self, frame: Image.Image, text: str) -> Image.Image:
-        from PIL import ImageDraw, ImageFont
+        from PIL import ImageDraw
 
-        font = None
-        if sys.platform == "darwin":
-            for fp in (
-                "/System/Library/Fonts/PingFang.ttc",
-                "/System/Library/Fonts/STHeiti Light.ttc",
-                "/Library/Fonts/Arial Unicode.ttf",
-                "/System/Library/Fonts/Helvetica.ttc",
-            ):
-                try:
-                    font = ImageFont.truetype(fp, 14)
-                    break
-                except OSError:
-                    continue
-        if font is None:
-            for fp in ("msyh.ttc", "arial.ttf"):
-                try:
-                    font = ImageFont.truetype(fp, 14)
-                    break
-                except OSError:
-                    continue
+        font = load_bubble_font(14)
         if font is None:
             font = ImageFont.load_default()
 
@@ -359,34 +341,11 @@ class MeowWindow:
             self._animation_loop = self._build_animation_loop()
         _log.info("settings reloaded")
 
-    def _ensure_archive_dir_writable(self, archive_dir: str = None) -> bool:
-        archive_dir = archive_dir or self.config.archive_dir
-        if sys.platform == "darwin" and hasattr(self.platform_window, "check_directory_writable"):
-            if not self.platform_window.check_directory_writable(archive_dir):
-                granted = self.platform_window.request_directory_access(archive_dir)
-                if not granted:
-                    self.state.show_bubble("请将 Python.app 添加到完全磁盘访问权限", 120)
-                    return False
-                if not self.platform_window.check_directory_writable(archive_dir):
-                    self.state.show_bubble("授权未生效，请重启应用后重试", 120)
-                    return False
-            return True
-        if not os.path.exists(archive_dir):
-            try:
-                os.makedirs(archive_dir, exist_ok=True)
-            except OSError as e:
-                self.state.show_bubble(f"归档目录无法创建: {e}", 120)
-                return False
-        if not os.access(archive_dir, os.W_OK):
-            self.state.show_bubble(f"归档目录不可写: {archive_dir}", 120)
-            return False
-        return True
-
     def _update_html(self) -> None:
         """Regenerate the HTML index in the archive directory."""
 
         archive_dir = self.config.archive_dir
-        if not os.path.exists(archive_dir) or not os.access(archive_dir, os.W_OK):
+        if not ensure_archive_dir_writable(self, archive_dir):
             _log.warning("archive dir not writable, skipping html generation")
             return
 
