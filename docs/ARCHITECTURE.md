@@ -253,7 +253,12 @@ AgentGateway.chat
 - ✅ 气泡绘制抽出为 `ui/bubble_renderer.py`
 - ✅ macOS 动画定时器抽出为 `ui/macos_animation.py`（window.py 296 行，原始 513 行，减少 42%）
 
-## 安全考虑
+## 已完成的 P3 改进
+
+- ✅ Windows 动画定时器抽出为 `ui/win32_animation.py`（与 macOS 对称）
+- ✅ 右键菜单统一使用 `MenuSpec`（`menu_actions.build_menu_items` 单点定义）
+- ✅ 平台窗口创建工厂化为 `ui/platform_factory.py`
+- ✅ `window.py` 513 → 280 行（**−45%**）
 
 1. **路径验证**：未来需要防止路径遍历攻击
 2. **文件大小限制**：避免处理超大文件
