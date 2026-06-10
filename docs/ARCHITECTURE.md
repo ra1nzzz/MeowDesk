@@ -251,7 +251,7 @@ AgentGateway.chat
 - ✅ 平台字体加载抽出为 `ui/bubble_font.py`
 - ✅ `ensure_archive_dir_writable` 统一为模块函数
 - ✅ 气泡绘制抽出为 `ui/bubble_renderer.py`
-- ✅ macOS 动画定时器抽出为 `ui/macos_animation.py`（window.py 296 行，原始 513 行）
+- ✅ macOS 动画定时器抽出为 `ui/macos_animation.py`（window.py 296 行，原始 513 行，减少 42%）
 
 ## 安全考虑
 
