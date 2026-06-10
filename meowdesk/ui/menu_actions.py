@@ -24,6 +24,24 @@ Separator = None
 MenuSpec = List[Optional[MenuItem]]
 
 
+def action_open_chat(window: "MeowWindow") -> None:
+    """Open the AI chat window."""
+
+    from .chat import ChatWindow
+    if hasattr(window, "agent_gateway"):
+        ChatWindow(window.parent, window.config, agent_gateway=window.agent_gateway)
+
+
+def action_show_about(window: "MeowWindow") -> None:
+    """Show the about dialog."""
+
+    from .. import __version__
+    msg = f"妙喵桌宠 MeowDesk\n\n版本：{__version__}\n智能桌面文件分类归档工具\n\nGitHub: github.com/ra1nzzz/MeowDesk"
+    if hasattr(window, "parent"):
+        from tkinter import messagebox
+        messagebox.showinfo("关于", msg, parent=window.parent)
+
+
 def build_menu_items(window: "MeowWindow") -> MenuSpec:
     """Build the context menu item list.
 
@@ -36,10 +54,12 @@ def build_menu_items(window: "MeowWindow") -> MenuSpec:
         ("打开导航页", lambda: action_open_html(window)),
         ("打开归档目录", lambda: action_open_archive_dir(window)),
         None,
-        ("清理磁盘", lambda: action_clean_disk(window)),
-        ("查看日期", lambda: action_check_date(window)),
-        ("定期提醒", lambda: action_check_reminders(window)),
-        ("系统信息", lambda: action_system_info(window)),
+        ("💬 自由对话", lambda: action_open_chat(window)),
+        ("🧹 清理磁盘", lambda: action_clean_disk(window)),
+        ("📅 查看日期", lambda: action_check_date(window)),
+        ("🎉 假期提醒", lambda: action_check_holidays(window)),
+        ("💝 经期提醒", lambda: action_period_reminder(window)),
+        ("💻 系统信息", lambda: action_system_info(window)),
         None,
         ("设置", lambda: action_open_settings(window)),
         ("关于", lambda: action_show_about(window)),
@@ -134,6 +154,56 @@ def action_system_info(window: "MeowWindow") -> None:
             f"CPU {data['cpu_count']}核 {data['cpu_percent']}% | 内存 {data['memory_percent']}%",
             80,
         )
+
+
+def action_check_holidays(window: "MeowWindow") -> None:
+    """Run the check_holidays command and show a bubble."""
+
+    registry = CommandRegistry()
+    result = registry.execute("check_holidays")
+    if result["success"]:
+        holidays = result["result"]["upcoming_holidays"]
+        if holidays:
+            msg = "🎉 即将到来的假期:\n"
+            for h in holidays[:5]:
+                name = h["name"]
+                date = h["date"]
+                days_left = h["days_left"]
+                if days_left == 0:
+                    msg += f"• {name}: {date} (今天!)\n"
+                elif days_left == 1:
+                    msg += f"• {name}: {date} (明天)\n"
+                else:
+                    msg += f"• {name}: {date} (还有 {days_left} 天)\n"
+            window.state.show_bubble(msg, 120)
+        else:
+            window.state.show_bubble("近期没有假期", 80)
+
+
+def action_period_reminder(window: "MeowWindow") -> None:
+    """Open the settings panel to the period reminder tab."""
+
+    from .settings import SettingsPanel
+    if hasattr(window, "parent"):
+        SettingsPanel(window.parent, window.config, on_save_callback=window._on_settings_saved)
+
+
+def action_open_chat(window: "MeowWindow") -> None:
+    """Open the AI chat window."""
+
+    from .chat import ChatWindow
+    if hasattr(window, "agent_gateway"):
+        ChatWindow(window.parent, window.config, agent_gateway=window.agent_gateway)
+
+
+def action_show_about(window: "MeowWindow") -> None:
+    """Show the about dialog."""
+
+    from .. import __version__
+    msg = f"妙喵桌宠 MeowDesk\n\n版本：{__version__}\n智能桌面文件分类归档工具\n\nGitHub: github.com/ra1nzzz/MeowDesk"
+    if hasattr(window, "parent"):
+        from tkinter import messagebox
+        messagebox.showinfo("关于", msg, parent=window.parent)
 
 
 def action_open_settings(window: "MeowWindow") -> None:

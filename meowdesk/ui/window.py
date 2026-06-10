@@ -27,6 +27,7 @@ from .animation_loop import AnimationLoop
 from .bubble_renderer import draw_bubble
 from .macos_animation import MacOSAnimationTimer
 from .menu_actions import build_menu_items, ensure_archive_dir_writable
+from .win32_animation import Win32AnimationTimer
 from .window_drop import FileDropHandler
 from .window_reminders import ReminderChecker
 from .window_state import WindowState
@@ -74,6 +75,7 @@ class MeowWindow:
         self._reminder_checker: Optional[ReminderChecker] = None
         self._animation_loop: Optional[AnimationLoop] = None
         self._macos_timer: Optional[MacOSAnimationTimer] = None
+        self._win32_timer: Optional[Win32AnimationTimer] = None
 
     def create(self) -> None:
         """Create the platform window and wire up callbacks."""
@@ -133,8 +135,8 @@ class MeowWindow:
         self._animation_loop = self._build_animation_loop()
 
         if sys.platform == "win32":
-            if hasattr(self.platform_window, "root") and self.platform_window.root:
-                self.platform_window.root.after(200, self._animate)
+            self._win32_timer = Win32AnimationTimer(self)
+            self._win32_timer.start()
         elif sys.platform == "darwin":
             self._macos_timer = MacOSAnimationTimer(self)
             self._macos_timer.start()
@@ -184,18 +186,6 @@ class MeowWindow:
             draw_bubble=self._draw_bubble,
             on_tick=self._reminder_checker.tick if self._reminder_checker else None,
         )
-
-    def _animate(self) -> None:
-        if not self.platform_window:
-            return
-        if not getattr(self.platform_window, "root", None):
-            return
-
-        loop = self._animation_loop
-        loop.tick()
-
-        if getattr(self.platform_window, "root", None):
-            self.platform_window.root.after(int(loop.frame_duration()), self._animate)
 
     def _draw_bubble(self, frame: Image.Image, text: str) -> Image.Image:
         return draw_bubble(frame, text)
