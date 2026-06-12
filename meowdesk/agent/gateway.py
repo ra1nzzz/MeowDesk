@@ -104,7 +104,7 @@ class AgentGateway:
                 )
                 if result.returncode == 0 and 'main' in result.stdout:
                     return True
-            except:
+            except (OSError, subprocess.SubprocessError):
                 pass
 
         return False
@@ -186,19 +186,17 @@ class AgentGateway:
             'params': params or {}
         })
 
-        if result['success']:
-            return {'success': True, **result['data']}
+        if result.get('success'):
+            data = result.get('data')
+            if isinstance(data, dict):
+                return {'success': True, **data}
+            return {'success': False, 'error': f'Agent 返回了非预期格式: {type(data).__name__}'}
         return {'success': False, 'error': result.get('error', '未知错误')}
 
     def get_suggestions(self, context: Dict[str, Any]) -> List[str]:
         """获取智能建议"""
         if not self.enabled or not self.is_available():
             return []
-
-        result = self._request('POST', '/suggestions', {'context': context})
-        if result['success'] and result.get('data'):
-            return result['data'].get('suggestions', [])
-        return []
 
         result = self._request('POST', '/suggestions', {'context': context})
         if result['success'] and result.get('data'):
