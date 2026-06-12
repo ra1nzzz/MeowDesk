@@ -199,7 +199,8 @@ class ChatWindow:
                 result = self.agent_gateway.chat(message, context)
                 self.window.after(0, lambda: self._handle_response(result))
             except Exception as e:
-                self.window.after(0, lambda: self._handle_error(str(e)))
+                error_msg = str(e)
+                self.window.after(0, lambda msg=error_msg: self._handle_error(msg))
         
         threading.Thread(target=send_thread, daemon=True).start()
     
