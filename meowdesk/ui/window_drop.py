@@ -165,11 +165,13 @@ class FileDropHandler:
         md5 = self._file_handler.calculate_md5(filepath)
 
         for record in self._db.search():
+            record_md5 = getattr(record, "md5", "")
+            record_action = getattr(record, "action", "")
             if (
-                record.get("md5") == md5
-                and record.get("action") != "recycle"
+                record_md5 == md5
+                and record_action != "recycle"
             ):
-                dest = record.get("destination", "")
+                dest = getattr(record, "destination", "")
                 if dest and dest != "(已回收)" and os.path.exists(dest):
                     _log.info("skip duplicate: %s", filename)
                     try:
@@ -178,37 +180,43 @@ class FileDropHandler:
                         pass
                     return "duplicate"
 
-        category, action = self._classifier.classify(filepath)
+        classify_result = self._classifier.classify(filepath)
+        category = classify_result.category
+        action_value = (
+            classify_result.action.value
+            if hasattr(classify_result.action, "value")
+            else str(classify_result.action)
+        )
         now = datetime_now()
         record = {
             "timestamp": now.isoformat(),
             "original_name": filename,
             "original_path": filepath,
             "category": category,
-            "action": action,
+            "action": action_value,
             "date": now.strftime("%Y-%m-%d"),
             "time": now.strftime("%H:%M:%S"),
             "file_size": file_size,
             "md5": md5,
         }
 
-        if action == "recycle":
-            success, error = self._file_handler.recycle_file(filepath)
-            if success:
-                record["destination"] = "(已回收)"
-                self._db.add_record(record)
+        if action_value == "recycle":
+            result = self._file_handler.recycle_file(filepath)
+            if result.success:
+                record["destination"] = result.destination
+                self._db.add_record_dict(record)
                 _log.info("recycled %s", filename)
                 return "recycle"
-            _log.error("recycle %s failed: %s", filename, error)
+            _log.error("recycle %s failed: %s", filename, result.error)
             return "error"
 
-        success, dest, error = self._file_handler.archive_file(filepath, category)
-        if success:
-            record["destination"] = dest
-            self._db.add_record(record)
+        result = self._file_handler.archive_file(filepath, category)
+        if result.success:
+            record["destination"] = result.destination
+            self._db.add_record_dict(record)
             _log.info("archived %s -> %s/", filename, category)
             return "archive"
-        _log.error("archive %s failed: %s", filename, error)
+        _log.error("archive %s failed: %s", filename, result.error)
         return "error"
 
     def _ensure_archive_writable(self) -> bool:

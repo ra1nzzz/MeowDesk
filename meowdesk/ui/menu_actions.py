@@ -207,18 +207,15 @@ def action_show_about(window: "MeowWindow") -> None:
 
 
 def action_open_settings(window: "MeowWindow") -> None:
-    """Open the settings file or macOS settings panel."""
+    """Open the graphical settings panel."""
 
     if sys.platform == "darwin":
         _open_macos_settings(window)
         return
-    if getattr(sys, "frozen", False):
-        base = os.path.dirname(sys.executable)
-    else:
-        base = os.getcwd()
-    config_file = os.path.join(base, "config.json")
-    if os.path.exists(config_file) and sys.platform == "win32":
-        os.startfile(config_file)
+
+    if hasattr(window, "parent"):
+        from .settings import SettingsPanel
+        SettingsPanel(window.parent, window.config, on_save_callback=window._on_settings_saved)
 
 
 def action_show_about(window: "MeowWindow") -> None:

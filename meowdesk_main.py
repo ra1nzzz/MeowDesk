@@ -38,6 +38,17 @@ def get_app_dir():
         return os.path.dirname(os.path.abspath(__file__))
 
 
+def get_log_file(app_dir):
+    """Return a writable crash log path for packaged builds."""
+    if not getattr(sys, 'frozen', False):
+        return None
+    if sys.platform == 'win32':
+        local_appdata = os.environ.get('LOCALAPPDATA')
+        if local_appdata:
+            return os.path.join(local_appdata, 'MeowDesk', 'meowdesk.log')
+    return os.path.join(app_dir, 'meowdesk.log')
+
+
 def get_bundle_dir():
     """获取资源目录"""
     if getattr(sys, 'frozen', False):
@@ -60,18 +71,21 @@ def get_bundle_dir():
 
 def main():
     """主函数"""
-    setup_logging()
+    app_dir = get_app_dir()
+    log_file = get_log_file(app_dir)
+    setup_logging(log_file=log_file)
 
     _log.info("=" * 60)
     _log.info("MeowDesk 妙喵桌宠 starting")
     _log.info("=" * 60)
 
     # 目录
-    app_dir = get_app_dir()
     bundle_dir = get_bundle_dir()
     assets_dir = os.path.join(bundle_dir, 'assets')
 
     _log.info("app dir: %s", app_dir)
+    if log_file:
+        _log.info("log file: %s", log_file)
     _log.info("assets dir: %s", assets_dir)
 
     # 配置文件

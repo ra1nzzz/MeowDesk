@@ -1,4 +1,4 @@
-# -*- mode: python ; coding: utf-8 -*-
+﻿# -*- mode: python ; coding: utf-8 -*-
 # Single file mode (--onefile): All dependencies packed into one exe
 # MeowDesk v1.4.0 - New modular architecture
 
@@ -9,7 +9,6 @@ a = Analysis(
     datas=[
         ('assets', 'assets'),
         ('meowdesk', 'meowdesk'),
-        ('_gen_html.py', '.'),
         ('_locate.py', '.'),
         ('config.json', '.'),
         ('README.md', '.'),
@@ -19,6 +18,7 @@ a = Analysis(
         'meowdesk.agent',
         'meowdesk.platform',
         'meowdesk.ui',
+        'windnd',
     ],
     hookspath=[],
     hooksconfig={},

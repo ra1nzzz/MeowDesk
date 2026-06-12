@@ -50,16 +50,16 @@ class SettingsPanel:
         self.window.update_idletasks()
         sw = self.window.winfo_screenwidth()
         sh = self.window.winfo_screenheight()
-        ww, wh = 520, 550
+        ww, wh = 520, 600
         self.window.geometry(f"{ww}x{wh}+{(sw-ww)//2}+{(sh-wh)//2}")
         self.window.attributes("-topmost", True)
         self.window.grab_set()
         
+        # 创建底部按钮
+        self._create_buttons()
+
         # 创建选项卡
         self._create_notebook()
-        
-        # 创建按钮
-        self._create_buttons()
     
     def _create_notebook(self):
         """创建选项卡控件"""
@@ -78,7 +78,7 @@ class SettingsPanel:
                  foreground=[('selected', '#ffffff')])
         
         self.notebook = ttk.Notebook(self.window)
-        self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
+        self.notebook.pack(side='top', fill='both', expand=True, padx=10, pady=(10, 8))
         
         # 创建各个选项卡
         self._create_general_tab()
@@ -297,8 +297,9 @@ class SettingsPanel:
     
     def _create_buttons(self):
         """创建底部按钮"""
-        btn_frame = tk.Frame(self.window, bg=self.COLORS['bg'])
-        btn_frame.pack(fill='x', padx=20, pady=(0, 20))
+        self.button_frame = tk.Frame(self.window, bg=self.COLORS['bg'])
+        self.button_frame.pack(side='bottom', fill='x', padx=20, pady=(0, 16))
+        btn_frame = self.button_frame
         
         tk.Button(btn_frame, text="保存", command=self._save,
                  bg=self.COLORS['accent'], fg="#fff", relief="flat",
@@ -362,11 +363,12 @@ class SettingsPanel:
         
         # 添加提醒
         for reminder in reminders:
-            status = "启用" if reminder.get('enabled', True) else "禁用"
+            data = reminder.to_dict() if hasattr(reminder, "to_dict") else reminder
+            status = "启用" if data.get('enabled', True) else "禁用"
             self.reminder_tree.insert('', 'end', values=(
-                reminder.get('name', ''),
-                reminder.get('time', ''),
-                reminder.get('repeat', '不重复'),
+                data.get('name', ''),
+                data.get('time', ''),
+                data.get('repeat', '不重复'),
                 status
             ))
     
@@ -387,8 +389,9 @@ class SettingsPanel:
         
         reminders = self.config.reminders
         for reminder in reminders:
-            if reminder.get('name') == values[0]:
-                ReminderDialog(self.window, reminder=reminder, callback=self._on_reminder_updated)
+            data = reminder.to_dict() if hasattr(reminder, "to_dict") else reminder
+            if data.get('name') == values[0]:
+                ReminderDialog(self.window, reminder=data, callback=self._on_reminder_updated)
                 break
     
     def _delete_reminder(self):
@@ -405,41 +408,50 @@ class SettingsPanel:
         name = item['values'][0]
         
         reminders = self.config.reminders
-        reminders = [r for r in reminders if r.get('name') != name]
+        reminders = [
+            r for r in reminders
+            if (r.to_dict() if hasattr(r, "to_dict") else r).get('name') != name
+        ]
         self.config.set('reminders', reminders)
         
         self._load_reminders()
     
     def _on_reminder_added(self, reminder):
         """提醒添加回调"""
+        from ..core.types import Reminder
+
         reminders = self.config.reminders
-        reminders.append(reminder)
+        reminders.append(Reminder.from_dict(reminder))
         self.config.set('reminders', reminders)
         self._load_reminders()
     
     def _on_reminder_updated(self, reminder):
         """提醒更新回调"""
+        from ..core.types import Reminder
+
+        updated = Reminder.from_dict(reminder)
         reminders = self.config.reminders
         for i, r in enumerate(reminders):
-            if r.get('name') == reminder.get('name'):
-                reminders[i] = reminder
+            data = r.to_dict() if hasattr(r, "to_dict") else r
+            if data.get('name') == reminder.get('name'):
+                reminders[i] = updated
                 break
         self.config.set('reminders', reminders)
         self._load_reminders()
     
     def _save(self):
         """保存设置"""
-        from ..core.types import PeriodConfig, PeriodRecord
+        from ..core.types import AgentType, FileAction, PeriodRecord
 
         # 保存常规设置
         self.config.set('archive_dir', self.dir_var.get().strip())
         self.config.set('scale', round(self.scale_var.get(), 2))
-        self.config.set('screenshot_action', self.ss_var.get())
+        self.config.set('screenshot_action', FileAction(self.ss_var.get()))
 
         # 保存 AI 设置
         agent_config = self.config.agent_config
         agent_config.enabled = self.ai_enabled_var.get()
-        agent_config.agent_type = self.agent_type_var.get()
+        agent_config.agent_type = AgentType(self.agent_type_var.get())
         agent_config.endpoint = self.endpoint_var.get().strip()
         agent_config.api_key = self.token_var.get().strip()
         agent_config.timeout = self.timeout_var.get()
@@ -791,3 +803,9 @@ class ReminderDialog:
 
         self.calib_offset_var.set(new_offset)
         self.calib_label.config(text=str(new_offset))
+
+
+# The period-tab helpers belong to SettingsPanel; bind them explicitly so the
+# panel can be created even though the legacy methods live near ReminderDialog.
+SettingsPanel._create_period_tab = ReminderDialog._create_period_tab
+SettingsPanel._adjust_calibration = ReminderDialog._adjust_calibration

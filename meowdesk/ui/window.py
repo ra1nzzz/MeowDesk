@@ -61,6 +61,7 @@ class MeowWindow:
         self.state = WindowState(self.animation)
 
         self.platform_window = None
+        self.parent = None
         self.context_menu = None
         self._menu_handlers = []
         self.agent_gateway: Optional[AgentGateway] = None
@@ -101,11 +102,13 @@ class MeowWindow:
         self.platform_window.show()
 
         if hasattr(self.platform_window, "root") and self.platform_window.root:
+            self.parent = self.platform_window.root
             self.agent_gateway = AgentGateway(self.config.agent_config)
             from .menu import ContextMenu
             self.context_menu = ContextMenu(
                 self.platform_window.root,
                 self.config,
+                window=self,
                 agent_gateway=self.agent_gateway,
                 on_quit_callback=self.quit,
                 on_settings_saved=self._on_settings_saved,
@@ -121,7 +124,7 @@ class MeowWindow:
             state=self.state,
             show_bubble=self.state.show_bubble,
             on_finished=self._update_html,
-            check_archive_writable=lambda arc: ensure_archive_dir_writable(self, arc),
+            check_archive_writable=lambda: ensure_archive_dir_writable(self, self.config.archive_dir),
         )
         self._reminder_checker = ReminderChecker(
             config=self.config, show_bubble=self.state.show_bubble

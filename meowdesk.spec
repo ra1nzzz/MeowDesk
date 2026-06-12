@@ -1,4 +1,4 @@
-# -*- mode: python ; coding: utf-8 -*-
+﻿# -*- mode: python ; coding: utf-8 -*-
 # Directory mode: exe with separate _internal folder
 # MeowDesk v1.4.0 - New modular architecture
 
@@ -9,7 +9,6 @@ a = Analysis(
     datas=[
         ('assets', 'assets'),
         ('meowdesk', 'meowdesk'),
-        ('_gen_html.py', '.'),
         ('_locate.py', '.'),
         ('config.json', '.'),
         ('README.md', '.'),
@@ -19,6 +18,7 @@ a = Analysis(
         'meowdesk.agent',
         'meowdesk.platform',
         'meowdesk.ui',
+        'windnd',
     ],
     hookspath=[],
     hooksconfig={},
@@ -40,7 +40,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,  # 关闭控制台
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

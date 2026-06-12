@@ -31,6 +31,15 @@ _DEFAULT_FORMAT = "%(asctime)s %(name)s [%(levelname)s] %(message)s"
 _configured = False
 
 
+def _has_file_handler(root: Logger, log_file: str) -> bool:
+    target = os.path.abspath(log_file)
+    for handler in root.handlers:
+        if isinstance(handler, logging.FileHandler):
+            if os.path.abspath(handler.baseFilename) == target:
+                return True
+    return False
+
+
 def configure_logging(
     level: int = logging.INFO,
     log_file: Optional[str] = None,
@@ -49,18 +58,26 @@ def configure_logging(
     """
 
     global _configured
+    root = logging.getLogger("meowdesk")
+    formatter = logging.Formatter(fmt)
+
     if _configured:
+        root.setLevel(level)
+        root.propagate = propagate
+        if log_file and not _has_file_handler(root, log_file):
+            os.makedirs(os.path.dirname(log_file) or ".", exist_ok=True)
+            file_handler = logging.FileHandler(log_file, encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            root.addHandler(file_handler)
         return
 
-    root = logging.getLogger("meowdesk")
     root.setLevel(level)
     root.propagate = propagate
 
-    formatter = logging.Formatter(fmt)
-
-    stream = logging.StreamHandler(stream=sys.stderr)
-    stream.setFormatter(formatter)
-    root.addHandler(stream)
+    if sys.stderr is not None:
+        stream = logging.StreamHandler(stream=sys.stderr)
+        stream.setFormatter(formatter)
+        root.addHandler(stream)
 
     if log_file:
         os.makedirs(os.path.dirname(log_file) or ".", exist_ok=True)
