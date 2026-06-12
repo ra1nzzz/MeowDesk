@@ -327,8 +327,6 @@ class SettingsPanel:
     
     def _test_connection(self):
         """测试 AI 网关连接"""
-        from ..agent import AgentGateway
-        
         config = {
             'enabled': True,
             'agent_type': self.agent_type_var.get(),
@@ -336,8 +334,6 @@ class SettingsPanel:
             'api_key': self.token_var.get(),
             'timeout': self.timeout_var.get()
         }
-        
-        gateway = AgentGateway(config)
         
         # 测试连接
         try:
