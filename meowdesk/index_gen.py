@@ -1,11 +1,9 @@
 """HTML index generator for MeowDesk file archive."""
 
 import base64
-import hashlib
 import json
 import os
 import re
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from .utils import get_logger

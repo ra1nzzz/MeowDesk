@@ -5,11 +5,8 @@
 本类只负责事件路由与平台窗口生命周期。
 """
 
-import os
 import sys
 import time
-import webbrowser
-from datetime import datetime
 from typing import Callable, List, Optional
 
 from PIL import Image

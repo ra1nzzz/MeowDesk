@@ -5,7 +5,7 @@ AI 对话窗口模块
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from datetime import datetime
 import threading
 

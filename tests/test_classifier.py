@@ -5,7 +5,6 @@ installed (declared in ``requirements.txt``).  Platform-specific screen
 resolution lookups are exercised through monkeypatching.
 """
 
-import os
 import sys
 import types
 from unittest.mock import patch

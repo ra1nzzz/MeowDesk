@@ -2,12 +2,9 @@
 设置面板模块
 """
 
-import os
-import sys
-import json
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-from typing import Dict, Any, Callable, Optional, List
+from typing import Dict, Callable, Optional
 from datetime import datetime
 
 

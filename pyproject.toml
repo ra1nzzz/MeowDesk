@@ -1,0 +1,27 @@
+[tool.ruff]
+# Target the minimum supported runtime; see PRD non-functional requirements.
+target-version = "py311"
+line-length = 100
+
+# Generated / vendored / legacy ad-hoc scripts are out of scope for lint.
+extend-exclude = [
+    "archive",
+    "index_preview.html",
+    "_locate.py",
+    "test_cross_platform.py",
+    "test_exe_debug.py",
+    "test_macos.py",
+    "test_windows_features.py",
+]
+
+[tool.ruff.lint]
+# High-signal correctness rules only, so the gate is enforceable today
+# without a churn-heavy style reformat. Style/import-order/modernization
+# rule sets (E, W, I, B, UP) can be enabled incrementally later — see
+# ROADMAP "质量门禁".
+#   F  pyflakes  — undefined names, unused imports/vars, redefinitions
+select = ["F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests intentionally use bare lambdas as test doubles.
+"tests/*" = ["E731"]

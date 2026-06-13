@@ -4,7 +4,6 @@ Handles the Tkinter after() based animation loop for the
 MeowDesk Windows window.
 """
 
-import sys
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:

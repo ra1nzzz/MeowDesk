@@ -4,7 +4,6 @@ Handles NSTimer setup and the per-frame animation callback
 for the MeowDesk macOS window.
 """
 
-import sys
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:

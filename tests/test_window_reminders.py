@@ -2,7 +2,6 @@
 
 from datetime import datetime
 
-import pytest
 
 from meowdesk.core.types import Reminder
 from meowdesk.ui.window_reminders import ReminderChecker

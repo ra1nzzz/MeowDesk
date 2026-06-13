@@ -6,8 +6,7 @@ Agent Gateway - 连接本地 AI Agent (OpenClaw, Hermes 等)
 
 import json
 import subprocess
-import sys
-from typing import Dict, Any, Optional, List, Callable
+from typing import Dict, Any, Optional, List
 
 from ..core.types import AgentConfig, AgentType
 

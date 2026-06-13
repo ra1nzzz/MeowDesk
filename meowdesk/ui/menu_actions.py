@@ -12,8 +12,6 @@ import webbrowser
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 from ..agent import CommandRegistry
-from ..index_gen import write_html_index
-from .animation import AnimationManager
 
 if TYPE_CHECKING:
     from .window import MeowWindow
