@@ -101,17 +101,18 @@ def action_check_date(window: "MeowWindow") -> None:
     if result["success"]:
         data = result["result"]
         window.state.show_bubble(
-            f"{data['weekday']} 距周末{data['days_to_weekend']}天", 80
+            f"{data.get('weekday', '')} 距周末{data.get('days_to_weekend', '')}天", 80
         )
 
 
 def action_check_reminders(window: "MeowWindow") -> None:
     """Show the next scheduled reminder."""
 
-    if not window._reminder_checker:
+    reminder_checker = getattr(window, "_reminder_checker", None)
+    if not reminder_checker:
         window.state.show_bubble("暂无提醒，在设置中添加", 80)
         return
-    next_reminder = window._reminder_checker.trigger_immediate()
+    next_reminder = reminder_checker.trigger_immediate()
     if next_reminder:
         window.state.show_bubble(
             f"下一提醒：{next_reminder['name']} ({next_reminder['time']})", 80
@@ -164,16 +165,22 @@ def action_period_reminder(window: "MeowWindow") -> None:
     """Open the settings panel to the period reminder tab."""
 
     from .settings import SettingsPanel
-    if hasattr(window, "parent"):
-        SettingsPanel(window.parent, window.config, on_save_callback=window._on_settings_saved)
+    parent = getattr(window, "parent", None)
+    if parent is None:
+        return
+    on_save = getattr(window, "_on_settings_saved", None)
+    SettingsPanel(parent, window.config, on_save_callback=on_save)
 
 
 def action_open_chat(window: "MeowWindow") -> None:
     """Open the AI chat window."""
 
     from .chat import ChatWindow
-    if hasattr(window, "agent_gateway"):
-        ChatWindow(window.parent, window.config, agent_gateway=window.agent_gateway)
+    parent = getattr(window, "parent", None)
+    agent_gateway = getattr(window, "agent_gateway", None)
+    if parent is None or agent_gateway is None:
+        return
+    ChatWindow(parent, window.config, agent_gateway=agent_gateway)
 
 
 def action_open_settings(window: "MeowWindow") -> None:
@@ -183,9 +190,13 @@ def action_open_settings(window: "MeowWindow") -> None:
         _open_macos_settings(window)
         return
 
-    if hasattr(window, "parent"):
-        from .settings import SettingsPanel
-        SettingsPanel(window.parent, window.config, on_save_callback=window._on_settings_saved)
+    parent = getattr(window, "parent", None)
+    if parent is None:
+        return
+
+    from .settings import SettingsPanel
+    on_save = getattr(window, "_on_settings_saved", None)
+    SettingsPanel(parent, window.config, on_save_callback=on_save)
 
 
 def action_show_about(window: "MeowWindow") -> None:

@@ -5,9 +5,10 @@
   "auto_open_html": false,
   "screenshot_action": "recycle",
   "window_position": [
-    1662,
-    346
+    1527,
+    402
   ],
+  "scale": 0.3,
   "categories": {
     "截图": {
       "exts": [
@@ -149,10 +150,22 @@
       "action": "archive"
     }
   },
-  "scale": 0.3,
-  "ai_enabled": true,
-  "agent_type": "openclaw",
-  "agent_endpoint": "http://localhost:18789",
-  "agent_token": "9f829723a6f8576a36ac2f0e87bcfec396eacf84a010b6bc",
-  "agent_timeout": 30
+  "agent": {
+    "enabled": false,
+    "agent_type": "openclaw",
+    "endpoint": "http://localhost:8080",
+    "api_key": "",
+    "timeout": 30
+  },
+  "reminders": [],
+  "period": {
+    "enabled": false,
+    "mode": "self",
+    "cycle_days": 28,
+    "period_days": 5,
+    "last_period_start": "",
+    "last_period_end": "",
+    "records": [],
+    "calibration_offset": 0
+  }
 }

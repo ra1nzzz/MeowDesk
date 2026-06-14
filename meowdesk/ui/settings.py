@@ -52,11 +52,12 @@ class SettingsPanel:
         self.window.attributes("-topmost", True)
         self.window.grab_set()
         
-        # 创建底部按钮
-        self._create_buttons()
-
         # 创建选项卡
         self._create_notebook()
+
+        # 创建底部按钮（必须在 notebook 之后创建并 pack(side='bottom')，
+        # 否则 notebook 先占满窗口会导致按钮被挤出可视区域）
+        self._create_buttons()
     
     def _create_notebook(self):
         """创建选项卡控件"""
