@@ -156,6 +156,26 @@ class SettingsPanel:
                        selectcolor=self.COLORS['bg'], activebackground=self.COLORS['bg'],
                        activeforeground=self.COLORS['fg'],
                        font=("Microsoft YaHei", 10)).pack(side="left")
+        row += 1
+
+        # 随系统启动
+        tk.Label(tab, text="启动行为", bg=self.COLORS['bg'], fg=self.COLORS['fg'],
+                 anchor="w", font=("Microsoft YaHei", 10, "bold")).grid(
+            row=row, column=0, sticky="w", padx=20, pady=(16, 4))
+        row += 1
+
+        self.launch_var = tk.BooleanVar(value=self.config.config.launch_at_startup)
+        tk.Checkbutton(
+            tab,
+            text="随系统启动",
+            variable=self.launch_var,
+            bg=self.COLORS['bg'],
+            fg=self.COLORS['fg'],
+            selectcolor=self.COLORS['bg'],
+            activebackground=self.COLORS['bg'],
+            activeforeground=self.COLORS['fg'],
+            font=("Microsoft YaHei", 10),
+        ).grid(row=row, column=0, columnspan=2, sticky='w', padx=20, pady=(0, 4))
     
     def _create_ai_tab(self):
         """创建 AI 助手选项卡"""
@@ -485,6 +505,18 @@ class SettingsPanel:
         period.calibration_offset = self.calib_offset_var.get()
 
         self.config.config.period = period
+
+        # 启动项设置
+        try:
+            self.config.set('launch_at_startup', bool(self.launch_var.get()))
+        except Exception:
+            pass
+
+        # 启动项设置
+        try:
+            self.config.config.launch_at_startup = bool(self.launch_var.get())
+        except Exception:
+            pass
 
         # 保存配置
         self.config.save()

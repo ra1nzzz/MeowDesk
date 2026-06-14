@@ -387,3 +387,46 @@ class ULWRenderer:
             gdi32.DeleteObject(self._hbitmap)
         if self._hdc_mem:
             gdi32.DeleteDC(self._hdc_mem)
+
+_APP_NAME = "MeowDesk"
+_REG_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
+
+
+def _startup_value() -> tuple:
+    import sys as _sys
+    from pathlib import Path as _Path
+    if getattr(_sys, 'frozen', False):
+        return str(_sys.executable), f'"{_sys.executable}"'
+    python = str(_sys.executable)
+    script = str(_Path(__file__).resolve().parents[1] / "meowdesk_main.py")
+    return python, f'"{python}" "{script}"'
+
+
+def set_launch_at_startup(enabled: bool) -> bool:
+    import winreg
+    value_name, value_data = _startup_value()
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _REG_PATH, 0, winreg.KEY_SET_VALUE) as key:
+            if enabled:
+                winreg.SetValueEx(key, _APP_NAME, 0, winreg.REG_SZ, value_data)
+            else:
+                try:
+                    winreg.DeleteValue(key, _APP_NAME)
+                except FileNotFoundError:
+                    pass
+        return True
+    except OSError:
+        return False
+
+
+def is_launch_at_startup() -> bool:
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _REG_PATH, 0, winreg.KEY_READ) as key:
+            val, _ = winreg.QueryValueEx(key, _APP_NAME)
+            return bool(val)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
+

@@ -249,6 +249,11 @@ class MeowWindow:
         self.platform_window.show_context_menu(menu_items)
 
     def _on_settings_saved(self) -> None:
+        from ..platform import set_launch_at_startup
+        try:
+            set_launch_at_startup(bool(self.config.config.launch_at_startup))
+        except Exception:
+            pass
         scale = self.config.config.scale
         if abs(scale - self.animation.scale) > 0.01:
             self.animation = AnimationManager(self.assets_dir, scale)

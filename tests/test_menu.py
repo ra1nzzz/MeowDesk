@@ -125,3 +125,31 @@ def test_settings_panel_save_persists_typed_values(monkeypatch):
             if panel is not None and panel.window.winfo_exists():
                 panel.window.destroy()
             root.destroy()
+
+
+def test_settings_panel_save_persists_launch_at_startup(monkeypatch):
+    from meowdesk.ui.settings import SettingsPanel
+
+    monkeypatch.setattr("meowdesk.ui.settings.messagebox.showinfo", lambda *_, **__: None)
+
+    with tempfile.TemporaryDirectory() as td:
+        config_path = Path(td) / "config.json"
+        config = ConfigManager(str(config_path))
+        try:
+            root = tk.Tk()
+        except tk.TclError as exc:
+            pytest.skip(f"Tk unavailable: {exc}")
+
+        root.withdraw()
+        panel = None
+        try:
+            panel = SettingsPanel(root, config)
+            panel.launch_var.set(True)
+            panel._save()
+
+            reloaded = ConfigManager(str(config_path))
+            assert reloaded.config.launch_at_startup is True
+        finally:
+            if panel is not None and panel.window.winfo_exists():
+                panel.window.destroy()
+            root.destroy()

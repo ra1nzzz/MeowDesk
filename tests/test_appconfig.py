@@ -21,6 +21,7 @@ def test_scalar_field_names_lists_expected_keys():
         "screenshot_action",
         "window_position",
         "scale",
+        "launch_at_startup",
     }
     assert set(AppConfig.scalar_field_names()) == expected
 

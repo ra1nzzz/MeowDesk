@@ -210,6 +210,7 @@ class AppConfig:
     screenshot_action: FileAction = FileAction.RECYCLE
     window_position: Optional[Tuple[int, int]] = None
     scale: float = 0.5
+    launch_at_startup: bool = False
 
     # ---- container / nested fields (require custom (de)serialisation) ----
     # These are deliberately listed *after* the scalar fields so
@@ -228,6 +229,7 @@ class AppConfig:
         "screenshot_action",
         "window_position",
         "scale",
+        "launch_at_startup",
     )
 
     @classmethod
