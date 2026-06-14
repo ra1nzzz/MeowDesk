@@ -7,7 +7,8 @@ macOS 平台实现 - 使用 PyObjC 实现透明窗口
 
 import sys
 import os
-from typing import Tuple, Optional, List
+import subprocess
+from typing import Tuple, List
 from PIL import Image
 import io
 
@@ -16,11 +17,11 @@ from .base import PlatformWindow
 if sys.platform == 'darwin':
     try:
         from Cocoa import (
-            NSApplication, NSWindow, NSView, NSImage, NSBitmapImageRep,
+            NSApplication, NSWindow, NSView, NSImage,
             NSWindowStyleMaskBorderless, NSBackingStoreBuffered,
             NSFloatingWindowLevel, NSApplicationActivationPolicyRegular,
             NSColor, NSMakeRect, NSMakePoint, NSMakeSize,
-            NSScreen, NSEvent, NSLeftMouseDown, NSRightMouseDown,
+            NSScreen, NSEvent,
             NSLeftMouseDragged, NSLeftMouseUp,
             NSMenu, NSMenuItem
         )
@@ -44,7 +45,6 @@ else:
 
 if MACOS_AVAILABLE:
 
-    from Cocoa import NSOpenPanel
 
     class MeowNSWindow(NSWindow):
 

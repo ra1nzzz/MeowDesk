@@ -46,21 +46,27 @@
 - [x] `core/classifier.py` 单元测试
 - [x] `core/file_handler.py` 单元测试
 - [x] `agent/commands.py` 纯逻辑测试
-- [ ] `agent/gateway.py` mock 测试
-- [ ] `platform/base.py` 抽象契约测试
+- [x] `agent/gateway.py` mock 测试（`tests/test_gateway.py`，22 用例）
+- [x] `platform/base.py` 抽象契约测试（`tests/test_platform_base.py`，25 用例）
 - [ ] UI 组件行为测试
 
 ### 质量门禁
 - [x] GitHub Actions：单元测试
-- [ ] GitHub Actions：lint（ruff / flake8）
+- [x] GitHub Actions：lint（ruff，`select=[F]`，可增量启用 E/W/I/B/UP）
 - [ ] GitHub Actions：mypy（先覆盖 `core/`）
 
 ### 已修复
 - [x] `period_reminder` 中 `coming_soon` 与 `overdue` 分支顺序错误（已修：先判 `< 0` 再判 `<= 3`）
-
-### 待修
-- [ ] `FileHandler.archive_file` 失败时仍可能创建空目录
-- [ ] `ConfigManager.set` 接受未声明字段返回 `False` 时未给出日志
+- [x] `FileHandler.archive_file` 失败时残留空目录（`_cleanup_empty_category_dir` 逐级清理空父目录）
+- [x] `ConfigManager.set` 拒绝未声明字段时已输出 `_log.warning`
+- [x] 配置 / 数据库原子写入（`utils/io.atomic_write_json`，tmp + `os.replace`）
+- [x] 损坏 JSON 自动回退备份（`utils/io.load_json_with_backup`）
+- [x] `platform/macos.py` 缺失 `subprocess` 导入（开启完全磁盘访问时崩溃）
+- [x] `ui/chat.py` 异常回调 lambda 晚绑定 `NameError`
+- [x] `ui/menu_actions.py` `action_open_chat` / `action_show_about` 重复定义
+- [x] `ui/settings.py` 测试连接以 dict 构造 `AgentGateway` 的死代码
+- [x] `agent/gateway.py` `get_suggestions` 不可达重复代码 / 裸 `except` / `execute_command` 非 dict 响应崩溃
+- [x] `platform/base.py` `on_drag_enter/exit_callback` 未在 `__init__` 初始化
 
 ---
 

@@ -1,7 +1,6 @@
 """Tests for ``meowdesk.utils`` helpers."""
 
 import json
-import os
 
 import pytest
 

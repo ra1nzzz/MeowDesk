@@ -5,13 +5,9 @@
 与 macOS 共享相同的菜单项和动作逻辑。
 """
 
-import os
-import sys
-import tkinter as tk
-from tkinter import Menu, messagebox, filedialog
-from typing import Any, Optional, List
+from tkinter import Menu
+from typing import Any, Optional
 
-from .settings import SettingsPanel
 
 
 class _MenuWindowAdapter:

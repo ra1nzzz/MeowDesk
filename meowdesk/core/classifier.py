@@ -6,10 +6,9 @@
 import os
 import re
 import sys
-from typing import Tuple, Dict, Any
 from PIL import Image
 
-from .types import FileAction, ClassifyResult, AppConfig, CategoryConfig
+from .types import FileAction, ClassifyResult, AppConfig
 
 
 class FileClassifier:

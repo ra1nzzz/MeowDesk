@@ -12,8 +12,6 @@ import webbrowser
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 from ..agent import CommandRegistry
-from ..index_gen import write_html_index
-from .animation import AnimationManager
 
 if TYPE_CHECKING:
     from .window import MeowWindow
@@ -22,24 +20,6 @@ if TYPE_CHECKING:
 MenuItem = Tuple[str, Callable[[], None]]
 Separator = None
 MenuSpec = List[Optional[MenuItem]]
-
-
-def action_open_chat(window: "MeowWindow") -> None:
-    """Open the AI chat window."""
-
-    from .chat import ChatWindow
-    if hasattr(window, "agent_gateway"):
-        ChatWindow(window.parent, window.config, agent_gateway=window.agent_gateway)
-
-
-def action_show_about(window: "MeowWindow") -> None:
-    """Show the about dialog."""
-
-    from .. import __version__
-    msg = f"妙喵桌宠 MeowDesk\n\n版本：{__version__}\n智能桌面文件分类归档工具\n\nGitHub: github.com/ra1nzzz/MeowDesk"
-    if hasattr(window, "parent"):
-        from tkinter import messagebox
-        messagebox.showinfo("关于", msg, parent=window.parent)
 
 
 def build_menu_items(window: "MeowWindow") -> MenuSpec:
@@ -194,16 +174,6 @@ def action_open_chat(window: "MeowWindow") -> None:
     from .chat import ChatWindow
     if hasattr(window, "agent_gateway"):
         ChatWindow(window.parent, window.config, agent_gateway=window.agent_gateway)
-
-
-def action_show_about(window: "MeowWindow") -> None:
-    """Show the about dialog."""
-
-    from .. import __version__
-    msg = f"妙喵桌宠 MeowDesk\n\n版本：{__version__}\n智能桌面文件分类归档工具\n\nGitHub: github.com/ra1nzzz/MeowDesk"
-    if hasattr(window, "parent"):
-        from tkinter import messagebox
-        messagebox.showinfo("关于", msg, parent=window.parent)
 
 
 def action_open_settings(window: "MeowWindow") -> None:

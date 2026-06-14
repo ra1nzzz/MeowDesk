@@ -5,7 +5,7 @@ AI 对话窗口模块
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from datetime import datetime
 import threading
 
@@ -199,7 +199,8 @@ class ChatWindow:
                 result = self.agent_gateway.chat(message, context)
                 self.window.after(0, lambda: self._handle_response(result))
             except Exception as e:
-                self.window.after(0, lambda: self._handle_error(str(e)))
+                error_msg = str(e)
+                self.window.after(0, lambda msg=error_msg: self._handle_error(msg))
         
         threading.Thread(target=send_thread, daemon=True).start()
     

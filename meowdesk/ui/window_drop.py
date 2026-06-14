@@ -9,7 +9,6 @@ owner.
 import os
 import random
 import shutil
-import sys
 import threading
 from typing import List, Optional
 

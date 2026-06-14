@@ -22,6 +22,8 @@ class PlatformWindow(ABC):
         self.on_mouse_exit_callback: Optional[Callable] = None
         self.on_drag_start_callback: Optional[Callable] = None
         self.on_drag_end_callback: Optional[Callable] = None
+        self.on_drag_enter_callback: Optional[Callable] = None
+        self.on_drag_exit_callback: Optional[Callable] = None
 
     @abstractmethod
     def create(self):

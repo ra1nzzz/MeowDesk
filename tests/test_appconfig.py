@@ -1,6 +1,5 @@
 """Tests for ``meowdesk.core.types.AppConfig`` (de)serialisation."""
 
-import pytest
 
 from meowdesk.core.types import (
     AgentConfig,

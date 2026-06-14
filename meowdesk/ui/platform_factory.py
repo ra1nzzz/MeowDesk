@@ -5,7 +5,6 @@ based on the current operating system.
 """
 
 import sys
-from typing import Tuple
 
 from ..platform.base import PlatformWindow
 

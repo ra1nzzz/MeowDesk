@@ -4,7 +4,6 @@ macOS 设置面板启动器 - 使用子进程避免 tkinter 与 PyObjC 冲突
 
 import os
 import sys
-import json
 import subprocess
 import tempfile
 
