@@ -1,19 +1,24 @@
 """Tests for shared context-menu wiring."""
 
 import tempfile
-import tkinter as tk
 from pathlib import Path
 
 import pytest
 
 from meowdesk.core import ConfigManager
 from meowdesk.core.types import AgentType, FileAction
-from meowdesk.ui.menu import _MenuWindowAdapter
 from meowdesk.ui import menu_actions
 from meowdesk.ui.menu_actions import build_menu_items
 
+try:
+    from meowdesk.ui.menu import _MenuWindowAdapter
+except ImportError:
+    _MenuWindowAdapter = None
+
 
 def test_menu_window_adapter_provides_quit_callback():
+    if _MenuWindowAdapter is None:
+        pytest.skip("tkinter not available")
     called = []
     window = _MenuWindowAdapter(
         config=object(),
@@ -62,6 +67,12 @@ def test_settings_panel_keeps_footer_buttons_visible():
     with tempfile.TemporaryDirectory() as td:
         config = ConfigManager(str(Path(td) / "config.json"))
         try:
+            import tkinter as tk
+        except ImportError:
+            pytest.skip("Tk unavailable: tkinter not installed")
+            return
+
+        try:
             root = tk.Tk()
         except tk.TclError as exc:
             pytest.skip(f"Tk unavailable: {exc}")
@@ -89,11 +100,22 @@ def test_settings_panel_keeps_footer_buttons_visible():
 def test_settings_panel_save_persists_typed_values(monkeypatch):
     from meowdesk.ui.settings import SettingsPanel
 
-    monkeypatch.setattr("meowdesk.ui.settings.messagebox.showinfo", lambda *_, **__: None)
+    try:
+        import tkinter
+    except ImportError:
+        pytest.skip("Tk unavailable: tkinter not installed")
+        return
+    monkeypatch.setattr("tkinter.messagebox.showinfo", lambda *_, **__: None)
 
     with tempfile.TemporaryDirectory() as td:
         config_path = Path(td) / "config.json"
         config = ConfigManager(str(config_path))
+        try:
+            import tkinter as tk
+        except ImportError:
+            pytest.skip("Tk unavailable: tkinter not installed")
+            return
+
         try:
             root = tk.Tk()
         except tk.TclError as exc:
@@ -130,11 +152,22 @@ def test_settings_panel_save_persists_typed_values(monkeypatch):
 def test_settings_panel_save_persists_launch_at_startup(monkeypatch):
     from meowdesk.ui.settings import SettingsPanel
 
-    monkeypatch.setattr("meowdesk.ui.settings.messagebox.showinfo", lambda *_, **__: None)
+    try:
+        import tkinter
+    except ImportError:
+        pytest.skip("Tk unavailable: tkinter not installed")
+        return
+    monkeypatch.setattr("tkinter.messagebox.showinfo", lambda *_, **__: None)
 
     with tempfile.TemporaryDirectory() as td:
         config_path = Path(td) / "config.json"
         config = ConfigManager(str(config_path))
+        try:
+            import tkinter as tk
+        except ImportError:
+            pytest.skip("Tk unavailable: tkinter not installed")
+            return
+
         try:
             root = tk.Tk()
         except tk.TclError as exc:

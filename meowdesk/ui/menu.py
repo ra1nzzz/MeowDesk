@@ -5,7 +5,6 @@
 与 macOS 共享相同的菜单项和动作逻辑。
 """
 
-from tkinter import Menu
 from typing import Any, Optional
 
 
@@ -46,6 +45,8 @@ class ContextMenu:
     
     def __init__(self, parent, config, window=None, agent_gateway=None,
                  on_quit_callback=None, on_settings_saved=None):
+        from tkinter import Menu
+        self._Menu = Menu
         self.parent = parent
         self.config = config
         self.window = window
@@ -53,12 +54,12 @@ class ContextMenu:
         self.on_quit_callback = on_quit_callback
         self.on_settings_saved = on_settings_saved
         
-        self.menu: Optional[Menu] = None
+        self.menu: Optional[Any] = None
         self._create_menu()
     
     def _create_menu(self):
         """创建菜单"""
-        self.menu = Menu(self.parent, tearoff=0)
+        self.menu = self._Menu(self.parent, tearoff=0)
         
         from .menu_actions import build_menu_items
 
