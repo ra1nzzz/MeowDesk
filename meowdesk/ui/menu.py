@@ -326,7 +326,7 @@ class ContextMenu:
     SEPARATOR_MARGIN_X = 12
     ITEM_GAP = 12       # gap between icon and label (prototype --item-gap)
     ITEM_PAD_X = 16     # left/right padding (prototype --item-padding)
-    SUBMENU_OFFSET_X = 8  # gap between main menu and submenu panel
+    SUBMENU_OFFSET_X = 0  # no gap — submenu touches main menu edge
 
     def __init__(self, parent, config, window=None, agent_gateway=None,
                  on_quit_callback=None, on_settings_saved=None):
@@ -346,6 +346,8 @@ class ContextMenu:
         self._items_map = {}
         self._set_expanded = None
         self._submenu_trigger_frame = None
+        self._submenu_show_time = 0
+        self._submenu_bridge = None
 
     # ------------------------------------------------------------------
     # Build callback map from menu_actions
@@ -686,6 +688,29 @@ class ContextMenu:
 
         sub.geometry(f"{w}x{h}+{sx}+{sy}")
 
+        # Bridge frame: thin invisible window covering the edge between
+        # main menu and submenu, preventing dead-zone mouse leaves.
+        bridge = tk.Toplevel(self.parent)
+        bridge.overrideredirect(True)
+        bridge.configure(bg=c['menu_bg'])
+        bridge.attributes('-topmost', True)
+        try:
+            bridge.attributes('-alpha', 0.01)  # nearly invisible
+        except Exception:
+            pass
+        bridge_w = 4
+        bridge.geometry(f"{bridge_w}x{h}+{sx - bridge_w // 2}+{sy}")
+
+        def _bridge_enter(e):
+            self._cancel_hide_timer()
+
+        def _bridge_leave(e):
+            self._schedule_hide_submenu()
+
+        bridge.bind('<Enter>', _bridge_enter)
+        bridge.bind('<Leave>', _bridge_leave)
+        self._submenu_bridge = bridge
+
         # Hover handlers on submenu panel: cancel hide timer
         def _sub_enter(e):
             self._cancel_hide_timer()
@@ -701,6 +726,8 @@ class ContextMenu:
 
         self._submenu_window = sub
         self._submenu_visible = True
+        import time
+        self._submenu_show_time = time.monotonic()
         if self._set_expanded:
             self._set_expanded(True)
 
@@ -715,7 +742,7 @@ class ContextMenu:
         self._create_submenu_window(trigger_screen_y)
 
     def _hide_submenu(self):
-        """Hide the submenu panel."""
+        """Hide the submenu panel and bridge."""
         if not self._submenu_visible:
             return
         self._submenu_visible = False
@@ -728,13 +755,29 @@ class ContextMenu:
             except Exception:
                 pass
         self._submenu_window = None
+        if self._submenu_bridge:
+            try:
+                if self._submenu_bridge.winfo_exists():
+                    self._submenu_bridge.destroy()
+            except Exception:
+                pass
+        self._submenu_bridge = None
 
     def _schedule_hide_submenu(self):
-        """Schedule hidinging the submenu after a short delay (200ms)."""
+        """Schedule hidinging the submenu after a delay (500ms).
+
+        Includes a 400ms grace period after showing: if called within
+        that window, the hide is suppressed to prevent the submenu from
+        disappearing while the cursor is crossing between windows.
+        """
+        import time
+        now = time.monotonic()
+        if now - self._submenu_show_time < 0.4:
+            return  # still in grace period — do not schedule hide
         self._cancel_hide_timer()
         if self._submenu_window and self._submenu_window.winfo_exists():
             self._hide_timer = self._submenu_window.after(
-                200, self._hide_submenu)
+                500, self._hide_submenu)
 
     def _cancel_hide_timer(self):
         """Cancel any pending submenu hide timer."""
