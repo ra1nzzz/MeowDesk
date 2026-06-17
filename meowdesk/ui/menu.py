@@ -14,6 +14,8 @@ from typing import Any, Optional
 
 from PIL import Image, ImageDraw
 
+from .win32_rounded import style_popup_window
+
 
 # ---------------------------------------------------------------------------
 # Theme palettes (shared with settings.py)
@@ -880,6 +882,10 @@ class ContextMenu:
             sy = 4
 
         sub.geometry(f"{w}x{h}+{sx}+{sy}")
+        sub.update_idletasks()
+
+        # 应用圆角 + 阴影（Windows 11 用 DWM 原生，Win10 用 GDI+CS_DROPSHADOW）
+        style_popup_window(sub, radius=self.RADIUS)
 
         def _sub_enter(e):
             self._cancel_hide_timer()
@@ -1073,6 +1079,9 @@ class ContextMenu:
 
         self._menu_window.geometry(f"+{mx}+{my}")
         self._menu_window.update_idletasks()
+
+        # 应用圆角 + 阴影（Windows 11 用 DWM 原生，Win10 用 GDI+CS_DROPSHADOW）
+        style_popup_window(self._menu_window, radius=self.RADIUS)
 
         try:
             self._menu_window.focus_set()

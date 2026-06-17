@@ -4,7 +4,7 @@ MeowDesk - 智能桌面文件分类归档工具
 
 from .utils import configure_logging
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"
 __author__ = "ra1nzzz"
 __description__ = "桌面拖拽文件自动分类归档工具"
 

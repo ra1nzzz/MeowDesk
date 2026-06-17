@@ -7,6 +7,8 @@ import os
 from typing import Dict, Callable, Optional
 from datetime import datetime
 
+from .win32_rounded import style_popup_window
+
 
 # ---------------------------------------------------------------------------
 # Theme palettes
@@ -100,8 +102,8 @@ class SettingsPanel:
 
         # 创建窗口
         self.window = self.tk.Toplevel(parent)
-        self.window.title("设置")
-        self.window.configure(bg=self.COLORS['bg'])
+        self.window.overrideredirect(True)
+        self.window.configure(bg=self.COLORS['border'])
         self.window.resizable(False, False)
 
         # 设置窗口图标
@@ -126,8 +128,12 @@ class SettingsPanel:
 
         # 创建布局
         self._setup_ttk_styles()
+        self._create_titlebar()
         self._create_notebook()
         self._create_buttons()
+
+        # 应用圆角 + 阴影（延迟执行确保窗口完全渲染）
+        self.window.after(20, lambda: style_popup_window(self.window, radius=14))
 
     # ------------------------------------------------------------------
     # Theme helpers
@@ -153,6 +159,62 @@ class SettingsPanel:
         callback = self.on_save_callback
         self.window.destroy()
         SettingsPanel(parent, self.config, on_save_callback=callback)
+
+    # ------------------------------------------------------------------
+    # Custom title bar (borderless window)
+    # ------------------------------------------------------------------
+
+    def _create_titlebar(self):
+        """Create a custom title bar with drag-to-move and close button."""
+        c = self.COLORS
+        titlebar = self.tk.Frame(self.window, bg=c['bg_elevated'], height=34)
+        titlebar.pack(fill='x')
+        titlebar.pack_propagate(False)
+
+        # Drag area: everything except the close button
+        drag_frame = self.tk.Frame(titlebar, bg=c['bg_elevated'])
+        drag_frame.pack(side='left', fill='both', expand=True)
+
+        # Title text
+        self.tk.Label(drag_frame, text="设置", bg=c['bg_elevated'], fg=c['fg'],
+                      font=("Microsoft YaHei", 10, "bold"),
+                      padx=14).pack(side='left')
+
+        # Close button (×) — top right corner, 34x34 hit area
+        close_btn = self.tk.Label(titlebar, text="  \u00d7  ", bg=c['bg_elevated'],
+                                  fg=c['text_muted'],
+                                  font=("Microsoft YaHei", 13),
+                                  cursor='hand2', padx=8)
+        close_btn.pack(side='right', fill='y')
+        close_btn.bind('<Enter>', lambda e: (
+            close_btn.config(bg='#E81123', fg='white')))
+        close_btn.bind('<Leave>', lambda e: (
+            close_btn.config(bg=c['bg_elevated'], fg=c['text_muted'])))
+        close_btn.bind('<Button-1>', lambda e: self.window.destroy())
+
+        # Drag-to-move bindings on the entire titlebar area
+        for widget in (titlebar, drag_frame) + tuple(drag_frame.winfo_children()):
+            widget.bind('<Button-1>', self._titlebar_start_drag)
+
+        # Escape key closes the window
+        self.window.bind('<Escape>', lambda e: self.window.destroy())
+
+    def _titlebar_start_drag(self, event):
+        self._drag_x = event.x_root - self.window.winfo_x()
+        self._drag_y = event.y_root - self.window.winfo_y()
+        event.widget.bind('<B1-Motion>', self._titlebar_on_drag)
+        event.widget.bind('<ButtonRelease-1>', self._titlebar_stop_drag, add='+')
+
+    def _titlebar_on_drag(self, event):
+        x = event.x_root - self._drag_x
+        y = event.y_root - self._drag_y
+        self.window.geometry(f"+{x}+{y}")
+
+    def _titlebar_stop_drag(self, event):
+        try:
+            event.widget.unbind('<B1-Motion>')
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # TTK Styles
@@ -271,7 +333,7 @@ class SettingsPanel:
             self._tab_labels[key] = lbl
 
         # 侧栏底部版本号
-        self.tk.Label(sidebar, text="v1.4.0", bg=c['bg_elevated'],
+        self.tk.Label(sidebar, text="v1.5.1", bg=c['bg_elevated'],
                       fg=c['text_muted'], font=("Microsoft YaHei", 8)).pack(
             side='bottom', pady=(0, 12))
 
@@ -283,10 +345,19 @@ class SettingsPanel:
                                       highlightthickness=0, bd=0)
         self._canvas.pack(fill='both', expand=True)
 
-        scrollbar = self.ttk.Scrollbar(self._content_area, orient='vertical',
-                                       command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=scrollbar.set)
-        scrollbar.place(relx=1.0, rely=0, relheight=1.0, anchor='ne')
+        # Thin custom scrollbar (6px, matches HTML prototype aesthetic)
+        self._sb_canvas = self.tk.Canvas(self._content_area, width=6, bg=c['bg'],
+                                         highlightthickness=0, bd=0)
+        self._sb_canvas.place(relx=1.0, rely=0, relheight=1.0, anchor='ne')
+        self._sb_thumb_id = None
+        self._sb_dragging = False
+        self._sb_drag_y0 = 0
+        self._sb_drag_first0 = 0.0
+        self._canvas.configure(yscrollcommand=self._thin_scrollbar_update)
+        self._sb_canvas.bind('<Button-1>', self._on_sb_click)
+        self._sb_canvas.bind('<B1-Motion>', self._on_sb_drag)
+        self._sb_canvas.bind('<ButtonRelease-1>',
+                             lambda e: setattr(self, '_sb_dragging', False))
 
         self._inner_frame = self.tk.Frame(self._canvas, bg=c['bg'])
         self._canvas_window = self._canvas.create_window(
@@ -336,11 +407,11 @@ class SettingsPanel:
     def _on_canvas_configure(self, event):
         """Match inner frame width to canvas width on resize.
 
-        Subtract scrollbar width so card right edges don't touch the
-        scrollbar — gives ~14px breathing room.
+        Subtract thin scrollbar width (6px) so card right edges don't
+        touch the scrollbar.
         """
         self._canvas.itemconfigure(self._canvas_window,
-                                   width=event.width - 14)
+                                   width=event.width - 6)
 
     def _bind_mousewheel(self):
         self._canvas.bind_all('<MouseWheel>', self._on_mousewheel)
@@ -350,6 +421,45 @@ class SettingsPanel:
 
     def _on_mousewheel(self, event):
         self._canvas.yview_scroll(-int(event.delta / 120), 'units')
+
+    def _thin_scrollbar_update(self, first, last):
+        """Callback from canvas yscrollcommand — redraw the thin thumb."""
+        sb = self._sb_canvas
+        sb.delete('thumb')
+        f, l = float(first), float(last)
+        if l - f >= 1.0:
+            return  # content fits, no thumb needed
+        h = sb.winfo_height()
+        if h < 1:
+            return
+        thumb_h = max(int((l - f) * h), 24)
+        y0 = int(f * h)
+        y1 = y0 + thumb_h
+        # Draw rounded pill-shaped thumb (3px radius on a 6px wide canvas)
+        sb.create_oval(1, y0, 5, y0 + 6, fill=self.COLORS['border'], outline='', tags='thumb')
+        sb.create_oval(1, y1 - 6, 5, y1, fill=self.COLORS['border'], outline='', tags='thumb')
+        sb.create_rectangle(1, y0 + 3, 5, y1 - 3, fill=self.COLORS['border'], outline='', tags='thumb')
+
+    def _on_sb_click(self, event):
+        """Click on scrollbar track to jump."""
+        h = self._sb_canvas.winfo_height()
+        if h < 1:
+            return
+        frac = event.y / h
+        self._canvas.yview_moveto(frac)
+        self._sb_dragging = True
+        self._sb_drag_y0 = event.y
+        self._sb_drag_first0 = frac
+
+    def _on_sb_drag(self, event):
+        """Drag scrollbar thumb."""
+        if not self._sb_dragging:
+            return
+        h = self._sb_canvas.winfo_height()
+        if h < 1:
+            return
+        dy = event.y - self._sb_drag_y0
+        self._canvas.yview_moveto(self._sb_drag_first0 + dy / h)
 
     # ------------------------------------------------------------------
     # General tab — 卡片式布局
@@ -685,11 +795,40 @@ class SettingsPanel:
         self.tk.Label(card, text="开启后可在右键菜单中使用 AI 对话功能", bg=c['entry_bg'],
                       fg=c['text_muted'], font=("Microsoft YaHei", 9)).pack(anchor='w', pady=(2, 0))
 
-        # Card: 网关类型
+        # Card: 调用模式
+        card = self._make_card(tab)
+        self.tk.Label(card, text="调用模式", bg=c['entry_bg'], fg=c['fg'],
+                      font=("Microsoft YaHei", 10, "bold")).pack(anchor='w')
+        self.tk.Label(card, text="直通 LLM: 直接调用 OpenAI 兼容 API（如 DeepSeek、OpenAI 等）\n本地 Agent: 通过本机 OpenClaw / Hermes 网关转发",
+                      bg=c['entry_bg'], fg=c['text_muted'],
+                      font=("Microsoft YaHei", 9), justify='left').pack(anchor='w', pady=(2, 8))
+        current_mode = getattr(self.config.agent_config, 'mode', 'llm')
+        self.ai_mode_var = self.tk.StringVar(value=current_mode)
+        mode_frame = self.tk.Frame(card, bg=c['entry_bg'])
+        mode_frame.pack(fill='x')
+        for value, text in [('llm', '直通 LLM API'), ('agent', '本地 Agent')]:
+            self.tk.Radiobutton(mode_frame, text=text, variable=self.ai_mode_var, value=value,
+                                bg=c['entry_bg'], fg=c['fg'], selectcolor=c['entry_bg'],
+                                activebackground=c['entry_bg'], activeforeground=c['fg'],
+                                font=("Microsoft YaHei", 10)).pack(side="left", padx=(0, 16))
+
+        # Card: 模型名称 (LLM mode)
+        card = self._make_card(tab)
+        self.tk.Label(card, text="模型名称", bg=c['entry_bg'], fg=c['fg'],
+                      font=("Microsoft YaHei", 10, "bold")).pack(anchor='w')
+        self.tk.Label(card, text="LLM API 的模型标识，如 deepseek-chat、gpt-4o-mini", bg=c['entry_bg'],
+                      fg=c['text_muted'], font=("Microsoft YaHei", 9)).pack(anchor='w', pady=(2, 8))
+        current_model = getattr(self.config.agent_config, 'model', '')
+        self.model_var = self.tk.StringVar(value=current_model or 'deepseek-chat')
+        self.tk.Entry(card, textvariable=self.model_var, bg=c['bg_input'],
+                      fg=c['fg'], insertbackground=c['fg'], relief="flat",
+                      font=("Microsoft YaHei", 10)).pack(fill='x')
+
+        # Card: 网关类型 (agent mode only)
         card = self._make_card(tab)
         self.tk.Label(card, text="网关类型", bg=c['entry_bg'], fg=c['fg'],
                       font=("Microsoft YaHei", 10, "bold")).pack(anchor='w')
-        self.tk.Label(card, text="选择本地已部署的 AI 网关服务", bg=c['entry_bg'],
+        self.tk.Label(card, text="选择本地已部署的 AI 网关服务（仅本地 Agent 模式）", bg=c['entry_bg'],
                       fg=c['text_muted'], font=("Microsoft YaHei", 9)).pack(anchor='w', pady=(2, 8))
         self.agent_type_var = self.tk.StringVar(value=self.config.agent_config.agent_type.value)
         type_frame = self.tk.Frame(card, bg=c['entry_bg'])
@@ -700,12 +839,13 @@ class SettingsPanel:
                                 activebackground=c['entry_bg'], activeforeground=c['fg'],
                                 font=("Microsoft YaHei", 10)).pack(side="left", padx=(0, 16))
 
-        # Card: 网关地址
+        # Card: API 端点
         card = self._make_card(tab)
-        self.tk.Label(card, text="网关地址", bg=c['entry_bg'], fg=c['fg'],
+        self.tk.Label(card, text="API 端点", bg=c['entry_bg'], fg=c['fg'],
                       font=("Microsoft YaHei", 10, "bold")).pack(anchor='w')
-        self.tk.Label(card, text="AI 网关服务的访问端点 URL", bg=c['entry_bg'],
-                      fg=c['text_muted'], font=("Microsoft YaHei", 9)).pack(anchor='w', pady=(2, 8))
+        self.tk.Label(card, text="LLM 模式: API 基地址（如 https://api.deepseek.com）\nAgent 模式: 本地网关地址（如 http://localhost:8080）",
+                      bg=c['entry_bg'], fg=c['text_muted'],
+                      font=("Microsoft YaHei", 9), justify='left').pack(anchor='w', pady=(2, 8))
         self.endpoint_var = self.tk.StringVar(value=self.config.agent_config.endpoint)
         self.tk.Entry(card, textvariable=self.endpoint_var, bg=c['bg_input'],
                       fg=c['fg'], insertbackground=c['fg'], relief="flat",
@@ -715,7 +855,7 @@ class SettingsPanel:
         card = self._make_card(tab)
         self.tk.Label(card, text="API Token", bg=c['entry_bg'], fg=c['fg'],
                       font=("Microsoft YaHei", 10, "bold")).pack(anchor='w')
-        self.tk.Label(card, text="连接 AI 服务的访问凭证", bg=c['entry_bg'],
+        self.tk.Label(card, text="连接 AI 服务的访问凭证（API Key）", bg=c['entry_bg'],
                       fg=c['text_muted'], font=("Microsoft YaHei", 9)).pack(anchor='w', pady=(2, 8))
         self.token_var = self.tk.StringVar(value=self.config.agent_config.api_key)
         self.tk.Entry(card, textvariable=self.token_var, bg=c['bg_input'],
@@ -737,7 +877,7 @@ class SettingsPanel:
         self.tk.Label(timeout_row, text="秒", bg=c['entry_bg'], fg=c['text_muted'],
                       font=("Microsoft YaHei", 10)).pack(side='left', padx=(4, 0))
 
-        # Card: 自动检测
+        # Card: 自动检测 (agent mode)
         card = self._make_card(tab)
         self.tk.Label(card, text="自动检测", bg=c['entry_bg'], fg=c['fg'],
                       font=("Microsoft YaHei", 10, "bold")).pack(anchor='w')
@@ -748,7 +888,6 @@ class SettingsPanel:
                                                   fg=c['text_muted'],
                                                   font=("Microsoft YaHei", 9))
         self._agent_detect_label.pack(anchor='w', pady=(0, 8))
-        # 显示当前自动检测状态
         if self.config.config.agent_auto_detected:
             self._agent_detect_label.config(
                 text="(当前配置由自动检测生成)",
@@ -1172,6 +1311,8 @@ class SettingsPanel:
 
             agent_config = self.config.agent_config
             agent_config.enabled = self.ai_enabled_var.get()
+            agent_config.mode = self.ai_mode_var.get()
+            agent_config.model = self.model_var.get().strip()
             agent_config.agent_type = AgentType(self.agent_type_var.get())
             agent_config.endpoint = self.endpoint_var.get().strip()
             agent_config.api_key = self.token_var.get().strip()

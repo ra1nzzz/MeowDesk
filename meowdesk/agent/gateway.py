@@ -31,6 +31,8 @@ class AgentGateway:
         self.api_key = config.api_key
         self.timeout = config.timeout
         self.enabled = config.enabled
+        self.mode = getattr(config, 'mode', 'llm')
+        self.model = getattr(config, 'model', '')
 
     @property
     def headers(self) -> Dict[str, str]:
@@ -87,6 +89,10 @@ class AgentGateway:
         if not self.enabled:
             return False
 
+        # LLM 直通模式: 只要有端点就认为可用
+        if self.mode == 'llm':
+            return bool(self.endpoint)
+
         # 尝试 HTTP 健康检查
         for path in HEALTH_PATHS:
             result = self._request('GET', path)
@@ -113,7 +119,11 @@ class AgentGateway:
         if not self.enabled:
             return {'success': False, 'error': 'Agent 未启用'}
 
-        # 尝试 HTTP API
+        # 直通 LLM API 模式 (OpenAI-compatible)
+        if self.mode == 'llm':
+            return self._chat_llm(message, context)
+
+        # 本地 Agent 模式 (OpenClaw / Hermes)
         result = self._request('POST', '/v1/chat/completions', {
             'message': message,
             'messages': [{'role': 'user', 'content': message}],
@@ -122,11 +132,9 @@ class AgentGateway:
 
         if result.get('success') and result.get('data'):
             data = result['data']
-            # OpenAI 格式
             if 'choices' in data:
                 content = data['choices'][0].get('message', {}).get('content', '')
                 return {'success': True, 'response': content}
-            # 简单格式
             if 'response' in data:
                 return {'success': True, 'response': data['response']}
 
@@ -135,6 +143,61 @@ class AgentGateway:
             return self._chat_via_cli(message)
 
         return {'success': False, 'error': result.get('error', '请求失败')}
+
+    def _chat_llm(self, message: str, context: Optional[Dict] = None) -> Dict[str, Any]:
+        """Direct LLM API call — OpenAI-compatible /v1/chat/completions."""
+        # Build messages array with history
+        messages = []
+
+        # System prompt
+        sys_prompt = "你是妙喵桌宠的 AI 助手，用中文友好、简洁地回答用户问题。"
+        messages.append({'role': 'system', 'content': sys_prompt})
+
+        # Conversation history from context
+        if context and 'history' in context:
+            for msg in context['history']:
+                role = msg.get('role', 'user')
+                content = msg.get('content', '')
+                if role in ('user', 'assistant') and content:
+                    messages.append({'role': role, 'content': content})
+
+        # Current message
+        messages.append({'role': 'user', 'content': message})
+
+        # Build request body
+        body = {
+            'model': self.model or 'deepseek-chat',
+            'messages': messages,
+        }
+
+        # Endpoint: ensure it ends with /v1/chat/completions
+        endpoint = self.endpoint.rstrip('/')
+        if not endpoint.endswith('/v1/chat/completions'):
+            # If user provided base URL like https://api.deepseek.com, append the path
+            url = f"{endpoint}/v1/chat/completions"
+        else:
+            url = endpoint
+
+        # Send request
+        result = self._request_raw('POST', url, body)
+
+        if result.get('success') and result.get('data'):
+            data = result['data']
+            # OpenAI format
+            if 'choices' in data and data['choices']:
+                content = data['choices'][0].get('message', {}).get('content', '')
+                return {'success': True, 'response': content}
+            # Simple fallback
+            if 'response' in data:
+                return {'success': True, 'response': data['response']}
+
+        return {'success': False, 'error': result.get('error', '请求失败')}
+
+    def _request_raw(self, method: str, url: str, data: Optional[Dict] = None) -> Dict[str, Any]:
+        """Send HTTP request to an absolute URL (not using self.endpoint + path)."""
+        if HAS_REQUESTS:
+            return self._request_with_requests(method, url, data)
+        return self._request_with_urllib(method, url, data)
 
     def _chat_via_cli(self, message: str) -> Dict[str, Any]:
         """通过 CLI 调用 OpenClaw"""

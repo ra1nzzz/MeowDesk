@@ -55,6 +55,8 @@ class AgentConfig:
     endpoint: str = "http://localhost:8080"
     api_key: str = ""
     timeout: int = 30
+    mode: str = "llm"          # "agent" = local agent, "llm" = direct LLM API
+    model: str = ""            # model name for LLM mode (e.g. "deepseek-chat", "gpt-4o-mini")
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'AgentConfig':
@@ -64,7 +66,9 @@ class AgentConfig:
             agent_type=AgentType(data.get('agent_type', 'openclaw')),
             endpoint=data.get('endpoint', 'http://localhost:8080').rstrip('/'),
             api_key=data.get('api_key', ''),
-            timeout=data.get('timeout', 30)
+            timeout=data.get('timeout', 30),
+            mode=data.get('mode', 'llm'),
+            model=data.get('model', ''),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -74,7 +78,9 @@ class AgentConfig:
             'agent_type': self.agent_type.value,
             'endpoint': self.endpoint,
             'api_key': self.api_key,
-            'timeout': self.timeout
+            'timeout': self.timeout,
+            'mode': self.mode,
+            'model': self.model,
         }
 
 

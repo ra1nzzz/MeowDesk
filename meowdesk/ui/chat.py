@@ -3,9 +3,12 @@ AI 对话窗口模块
 兼容 macOS / Windows
 """
 
+import os
 from typing import Dict, Any, List
 from datetime import datetime
 import threading
+
+from .win32_rounded import style_popup_window
 
 # 从 settings 导入颜色配置
 try:
@@ -75,7 +78,19 @@ class ChatWindow:
         self.window.title("AI 助手 - MeowDesk")
         self.window.configure(bg=self.COLORS['bg'])
         self.window.resizable(True, True)
-        
+
+        # 设置窗口图标
+        import sys as _sys
+        _bundle = getattr(_sys, '_MEIPASS', None)
+        _base = _bundle if _bundle else os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        _icon = os.path.join(_base, 'assets', 'icon.ico')
+        if os.path.exists(_icon):
+            try:
+                self.window.iconbitmap(_icon)
+            except Exception:
+                pass
+
         # 居中显示
         self.window.update_idletasks()
         sw = self.window.winfo_screenwidth()
@@ -83,10 +98,13 @@ class ChatWindow:
         ww, wh = 550, 700
         self.window.geometry(f"{ww}x{wh}+{(sw-ww)//2}+{(sh-wh)//2}")
         self.window.attributes("-topmost", True)
-        
+
         # 创建 UI
         self._create_ui()
-        
+
+        # 圆角 + 阴影
+        self.window.after(20, lambda: style_popup_window(self.window, radius=14))
+
         # 添加欢迎消息
         self._add_message("欢迎使用 AI 助手！请输入您的问题。", 'system_msg')
     
@@ -146,19 +164,21 @@ class ChatWindow:
         input_frame = self.tk.Frame(self.window, bg=self.COLORS['border'])
         input_frame.pack(fill='x', padx=10, pady=10)
 
+        # 发送按钮先 pack（side=right），确保始终可见
+        send_btn = self.tk.Button(
+            input_frame, text="发送", bg=self.COLORS['accent'], fg="#ffffff",
+            relief="flat", cursor="hand2", padx=16, pady=10,
+            font=(FONT_FAMILY, 11, "bold"), command=self._send_message
+        )
+        send_btn.pack(side='right', padx=(8, 4), pady=4)
+
         self.input_text = self.tk.Text(
             input_frame, bg=self.COLORS['entry_bg'], fg=self.COLORS['fg'],
-            font=(FONT_FAMILY, 11), height=5, relief="flat", padx=12, pady=10,
+            font=(FONT_FAMILY, 11), height=3, relief="flat", padx=12, pady=10,
             wrap='word'
         )
-        self.input_text.pack(side='left', fill='both', expand=True)
+        self.input_text.pack(side='left', fill='both', expand=True, pady=4)
         self.input_text.bind('<Return>', self._on_enter)
-        
-        self.tk.Button(
-            input_frame, text="发送", bg=self.COLORS['accent'], fg="#ffffff",
-            relief="flat", cursor="hand2", padx=20, pady=12,
-            font=(FONT_FAMILY, 11, "bold"), command=self._send_message
-        ).pack(side='right', padx=(8, 0))
         
         # 状态栏
         self.status_label = self.tk.Label(
@@ -196,7 +216,7 @@ class ChatWindow:
     def _send_to_ai(self, message: str):
         """发送消息到 AI（异步）"""
         if not self.agent_gateway:
-            self._add_message("AI 助手未配置，请在设置中配置 AI 网关。", 'error_msg')
+            self._add_message("AI 助手未配置，请在设置中启用 AI 助手。", 'error_msg')
             return
         
         self._is_sending = True
@@ -204,9 +224,16 @@ class ChatWindow:
         
         def send_thread():
             try:
+                # Build history with proper roles (exclude system/error messages)
+                history = []
+                for msg in self.messages:
+                    role = msg.get('role', '')
+                    content = msg.get('raw_content', '')
+                    if role in ('user', 'assistant') and content:
+                        history.append({'role': role, 'content': content})
                 context = {
                     'session_id': self.session_id,
-                    'history': self.messages[-10:]
+                    'history': history,
                 }
                 result = self.agent_gateway.chat(message, context)
                 self.window.after(0, lambda: self._handle_response(result))
@@ -249,10 +276,19 @@ class ChatWindow:
         self.msg_text.see('end')
         self.msg_text.config(state='disabled')
         
-        # 记录消息历史
+        # 记录消息历史 — raw_content stores clean text without prefixes
+        role = 'user' if tag == 'user_msg' else ('assistant' if tag == 'ai_msg' else 'system')
+        # Strip display prefixes like "你: " or "AI: "
+        raw = message
+        if raw.startswith("你: "):
+            raw = raw[3:]
+        elif raw.startswith("AI: "):
+            raw = raw[4:]
+        
         self.messages.append({
-            'role': 'user' if tag == 'user_msg' else 'assistant',
+            'role': role,
             'content': message,
+            'raw_content': raw,
             'timestamp': timestamp
         })
         
