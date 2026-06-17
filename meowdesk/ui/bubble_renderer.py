@@ -30,6 +30,41 @@ _TEXT_COLOR = (245, 240, 235, 255) # warm white
 _SHADOW_COLOR = (0, 0, 0, 60)     # subtle shadow
 
 
+def _wrap_lines(
+    lines: List[str],
+    font: ImageFont.FreeTypeFont,
+    draw: ImageDraw.ImageDraw,
+    max_width: int,
+) -> List[str]:
+    """Wrap lines so each fits within *max_width* pixels.
+
+    Uses greedy character-by-character measurement for accurate
+    CJK / mixed-width support.
+    """
+    wrapped: List[str] = []
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font)
+        if bbox[2] - bbox[0] <= max_width:
+            wrapped.append(line)
+            continue
+        # Greedy wrap: accumulate chars until next char would overflow
+        current = ""
+        cw = 0
+        for ch in line:
+            test = current + ch
+            tw = draw.textbbox((0, 0), test, font=font)[2]
+            if tw > max_width and current:
+                wrapped.append(current)
+                current = ch
+                cw = draw.textbbox((0, 0), ch, font=font)[2]
+            else:
+                current = test
+                cw = tw
+        if current:
+            wrapped.append(current)
+    return wrapped
+
+
 def _measure_lines(
     lines: List[str],
     font: ImageFont.FreeTypeFont,
@@ -78,9 +113,11 @@ def draw_bubble(
     if font is None:
         font = ImageFont.load_default()
 
-    # ── Split into lines and measure ────────────────────────────────
-    lines = text.split("\n") if "\n" in text else [text]
+    # ── Split into lines, wrap long lines, and measure ─────────────
+    raw_lines = text.split("\n") if "\n" in text else [text]
     dummy_draw = ImageDraw.Draw(frame)
+    text_area_w = _MAX_WIDTH - _PADDING_X * 2
+    lines = _wrap_lines(raw_lines, font, dummy_draw, text_area_w)
     line_sizes, text_max_w, text_total_h = _measure_lines(
         lines, font, dummy_draw
     )
@@ -88,7 +125,7 @@ def draw_bubble(
     bubble_w = text_max_w + _PADDING_X * 2
     bubble_h = text_total_h + _PADDING_Y * 2
 
-    # Clamp to max width (simple truncation indicator)
+    # Ensure bubble doesn't exceed max width (wrapping should prevent this)
     if bubble_w > _MAX_WIDTH:
         bubble_w = _MAX_WIDTH
 
