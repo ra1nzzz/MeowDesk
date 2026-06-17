@@ -119,12 +119,13 @@ class SettingsPanel:
         self.window.update_idletasks()
         sw = self.window.winfo_screenwidth()
         sh = self.window.winfo_screenheight()
-        ww, wh = 680, 520
+        ww, wh = 760, 560
         self.window.geometry(f"{ww}x{wh}+{(sw-ww)//2}+{(sh-wh)//2}")
         self.window.attributes("-topmost", True)
         self.window.grab_set()
 
         # 创建布局
+        self._setup_ttk_styles()
         self._create_notebook()
         self._create_buttons()
 
@@ -152,6 +153,50 @@ class SettingsPanel:
         callback = self.on_save_callback
         self.window.destroy()
         SettingsPanel(parent, self.config, on_save_callback=callback)
+
+    # ------------------------------------------------------------------
+    # TTK Styles
+    # ------------------------------------------------------------------
+
+    def _setup_ttk_styles(self):
+        """Configure ttk styles for buttons and widgets."""
+        c = self.COLORS
+        style = self.ttk.Style()
+        style.theme_use('clam')
+
+        # Accent button (save, browse, add)
+        style.configure('Accent.TButton',
+                        background=c['accent'], foreground='#FFFFFF',
+                        borderwidth=0, focusthickness=0,
+                        padding=(16, 8),
+                        font=('Microsoft YaHei', 10, 'bold'))
+        style.map('Accent.TButton',
+                   background=[('active', c['accent_hover']),
+                               ('pressed', c['accent_hover'])])
+
+        # Outline button (cancel)
+        style.configure('Outline.TButton',
+                        background=c['bg'], foreground=c['text_secondary'],
+                        borderwidth=1, relief='solid',
+                        padding=(12, 8),
+                        font=('Microsoft YaHei', 10))
+        style.map('Outline.TButton',
+                   background=[('active', c['entry_bg']),
+                               ('pressed', c['entry_bg'])],
+                   foreground=[('active', c['fg'])])
+
+        # Treeview (reminder list)
+        style.configure('Treeview',
+                        background=c['entry_bg'], foreground=c['fg'],
+                        fieldbackground=c['entry_bg'], borderwidth=0,
+                        rowheight=32,
+                        font=('Microsoft YaHei', 9))
+        style.configure('Treeview.Heading',
+                        background=c['bg_input'], foreground=c['fg'],
+                        font=('Microsoft YaHei', 9, 'bold'))
+        style.map('Treeview',
+                   background=[('selected', c['accent'])],
+                   foreground=[('selected', '#FFFFFF')])
 
     # ------------------------------------------------------------------
     # Notebook / sidebar
@@ -209,7 +254,7 @@ class SettingsPanel:
             row = self.tk.Frame(nav_frame, bg=c['bg_elevated'])
             row.pack(fill='x', pady=2)
 
-            indicator = self.tk.Frame(row, width=3, bg='transparent')
+            indicator = self.tk.Frame(row, width=3, bg=c['bg_elevated'])
             indicator.pack(side='left', fill='y')
 
             lbl = self.tk.Label(row, text=label_text, bg=c['bg_elevated'],
@@ -247,12 +292,8 @@ class SettingsPanel:
         self._canvas_window = self._canvas.create_window(
             (0, 0), window=self._inner_frame, anchor='nw')
 
-        self._inner_frame.bind('<Configure>',
-                               lambda e: self._canvas.configure(
-                                   scrollregion=self._canvas.bbox('all')))
-        self._canvas.bind('<Configure>', self._on_canvas_resize)
-
-        # 鼠标滚轮
+        self._inner_frame.bind('<Configure>', self._on_inner_configure)
+        self._canvas.bind('<Configure>', self._on_canvas_configure)
         self._canvas.bind('<Enter>', lambda e: self._bind_mousewheel())
         self._canvas.bind('<Leave>', lambda e: self._unbind_mousewheel())
 
@@ -266,16 +307,6 @@ class SettingsPanel:
         # 默认显示常规
         self._switch_tab('general')
 
-    def _on_canvas_resize(self, event):
-        self._canvas.itemconfigure(self._canvas_window, width=event.width)
-
-    def _bind_mousewheel(self):
-        self._canvas.bind_all('<MouseWheel>',
-                              lambda e: self._canvas.yview_scroll(-int(e.delta / 120), 'units'))
-
-    def _unbind_mousewheel(self):
-        self._canvas.unbind_all('<MouseWheel>')
-
     def _switch_tab(self, key):
         """切换选项卡（左边框指示器 + 文字颜色）"""
         c = self.COLORS
@@ -286,7 +317,7 @@ class SettingsPanel:
 
         # 重置所有导航样式
         for k, (row, indicator, lbl) in self._tab_buttons.items():
-            indicator.config(bg='transparent')
+            indicator.config(bg=c['bg_elevated'])
             lbl.config(bg=c['bg_elevated'], fg=c['text_secondary'])
 
         # 激活选中的
@@ -297,6 +328,23 @@ class SettingsPanel:
             lbl.config(bg=c['bg_elevated'], fg=c['accent'])
             self._active_tab = key
             self._canvas.yview_moveto(0)
+
+    def _on_inner_configure(self, event):
+        """Update scroll region when inner frame content changes."""
+        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
+
+    def _on_canvas_configure(self, event):
+        """Match inner frame width to canvas width on resize."""
+        self._canvas.itemconfigure(self._canvas_window, width=event.width)
+
+    def _bind_mousewheel(self):
+        self._canvas.bind_all('<MouseWheel>', self._on_mousewheel)
+
+    def _unbind_mousewheel(self):
+        self._canvas.unbind_all('<MouseWheel>')
+
+    def _on_mousewheel(self, event):
+        self._canvas.yview_scroll(-int(event.delta / 120), 'units')
 
     # ------------------------------------------------------------------
     # General tab — 卡片式布局
@@ -327,9 +375,9 @@ class SettingsPanel:
         self.tk.Entry(dir_frame, textvariable=self.dir_var, bg=c['bg_input'],
                       fg=c['fg'], insertbackground=c['fg'], relief="flat",
                       font=("Microsoft YaHei", 10)).pack(side='left', fill='x', expand=True, padx=(0, 8))
-        self.tk.Button(dir_frame, text="浏览...", command=self._browse_dir,
-                       bg=c['accent'], fg="#fff", relief="flat",
-                       cursor="hand2", padx=12).pack(side='right')
+        self._make_rounded_button(dir_frame, "浏览...", self._browse_dir,
+                                   style='accent',
+                                   canvas_bg=c['entry_bg']).pack(side='right')
 
         # ---- Card: 宠物大小 ----
         card = self._make_card(tab)
@@ -351,7 +399,7 @@ class SettingsPanel:
 
         slider_frame = self.tk.Frame(card, bg=c['entry_bg'])
         slider_frame.pack(fill='x', pady=(8, 0))
-        self.tk.Scale(slider_frame, from_=0.3, to=1.0, resolution=0.05,
+        self.tk.Scale(slider_frame, from_=0.25, to=1.0, resolution=0.05,
                       orient="horizontal", variable=self.scale_var,
                       bg=c['entry_bg'], fg=c['fg'], troughcolor=c['bg_input'],
                       highlightthickness=0, label="", showvalue=False,
@@ -402,57 +450,213 @@ class SettingsPanel:
         cm_frame = self.tk.Frame(card, bg=c['entry_bg'])
         cm_frame.pack(fill='x')
 
+        self._theme_options = {}
         for value, text in [('dark', '深色'), ('light', '浅色'), ('system', '跟随系统')]:
             self._make_theme_preview(cm_frame, value, text)
+        self._update_theme_selection()
 
         # 底部间距
         self.tk.Frame(tab, height=12, bg=c['bg']).pack()
 
     def _make_card(self, parent):
-        """Create a card container matching the prototype style."""
+        """Create a rounded card container matching the prototype style."""
         c = self.COLORS
-        card = self.tk.Frame(parent, bg=c['entry_bg'], highlightbackground=c['border'],
-                             highlightthickness=1)
-        card.pack(fill='x', padx=16, pady=(0, 10))
-        inner = self.tk.Frame(card, bg=c['entry_bg'])
-        inner.pack(fill='x', padx=16, pady=14)
+        r = 10  # border radius
+        pad_x, pad_y = 16, 14  # inner padding
+
+        card_frame = self.tk.Frame(parent, bg=c['bg'])
+        card_frame.pack(fill='x', padx=16, pady=(0, 12))
+
+        bg = self.tk.Canvas(card_frame, bg=c['bg'], highlightthickness=0, bd=0)
+        bg.pack(fill='x')
+
+        inner = self.tk.Frame(bg, bg=c['entry_bg'])
+
+        def _draw_rounded_rect(w, h):
+            bg.delete('r')
+            # Filled body: 4 corner ovals + 2 cross rectangles
+            bg.create_oval(0, 0, r*2, r*2, fill=c['entry_bg'], outline='', tags='r')
+            bg.create_oval(w - r*2, 0, w, r*2, fill=c['entry_bg'], outline='', tags='r')
+            bg.create_oval(0, h - r*2, r*2, h, fill=c['entry_bg'], outline='', tags='r')
+            bg.create_oval(w - r*2, h - r*2, w, h, fill=c['entry_bg'], outline='', tags='r')
+            bg.create_rectangle(r, 0, w - r, h, fill=c['entry_bg'], outline='', tags='r')
+            bg.create_rectangle(0, r, w, h - r, fill=c['entry_bg'], outline='', tags='r')
+            # Border: 4 corner arcs + 4 edge lines
+            bg.create_arc(0, 0, r*2, r*2, start=90, extent=90, style='arc',
+                          outline=c['border'], tags='r')
+            bg.create_arc(w - r*2, 0, w, r*2, start=0, extent=90, style='arc',
+                          outline=c['border'], tags='r')
+            bg.create_arc(0, h - r*2, r*2, h, start=180, extent=90, style='arc',
+                          outline=c['border'], tags='r')
+            bg.create_arc(w - r*2, h - r*2, w, h, start=270, extent=90, style='arc',
+                          outline=c['border'], tags='r')
+            bg.create_line(r, 0, w - r, 0, fill=c['border'], tags='r')
+            bg.create_line(r, h, w - r, h, fill=c['border'], tags='r')
+            bg.create_line(0, r, 0, h - r, fill=c['border'], tags='r')
+            bg.create_line(w, r, w, h - r, fill=c['border'], tags='r')
+
+        def _on_resize(event):
+            cw = event.width + pad_x * 2
+            ch = event.height + pad_y * 2
+            bg.configure(height=ch)
+            _draw_rounded_rect(cw, ch)
+
+        inner.bind('<Configure>', _on_resize)
+        bg_win = bg.create_window((pad_x, pad_y), window=inner, anchor='nw')
+
+        # Stretch card inner frame to match card canvas width
+        def _on_card_canvas_resize(event):
+            bg.itemconfigure(bg_win, width=event.width - pad_x * 2)
+
+        bg.bind('<Configure>', _on_card_canvas_resize)
         return inner
 
-    def _make_theme_preview(self, parent, value, text):
-        """Create a theme preview option (simplified visual card)."""
-        c = self.COLORS
-        opt = self.tk.Frame(parent, bg=c['entry_bg'], cursor='hand2')
-        opt.pack(side='left', padx=(0, 12))
+    def _make_rounded_button(self, parent, text, command, style='accent',
+                              canvas_bg=None):
+        """Create a rounded button using Canvas drawing.
 
-        # Mini preview area
-        preview = self.tk.Frame(opt, width=72, height=36, bg=c['entry_bg'],
-                                highlightbackground=c['border'], highlightthickness=1)
+        style: 'accent' (filled coral), 'outline' (bordered), or 'danger'.
+        canvas_bg: background color for the canvas (should match parent bg).
+        """
+        c = self.COLORS
+        r = 8  # corner radius
+        pad_x = 18
+        pad_y = 7
+
+        if canvas_bg is None:
+            canvas_bg = c['bg']
+
+        # Estimate text width (CJK ~14px, latin ~8px at font size 10)
+        text_w = sum(14 if ord(ch) > 127 else 8 for ch in text)
+        w = text_w + pad_x * 2
+        h = 34
+
+        # Colors per style
+        if style == 'accent':
+            fill, hover, txt_c = c['accent'], c['accent_hover'], '#FFFFFF'
+            font_weight = 'bold'
+            border_c = None
+        elif style == 'outline':
+            fill, hover, txt_c = canvas_bg, c['entry_bg'], c['text_secondary']
+            font_weight = 'normal'
+            border_c = c['border']
+        elif style == 'danger':
+            fill, hover, txt_c = c.get('danger', '#F87171'), '#FCA5A5', '#FFFFFF'
+            font_weight = 'bold'
+            border_c = None
+        else:
+            fill, hover, txt_c = c['entry_bg'], c['border'], c['fg']
+            font_weight = 'normal'
+            border_c = None
+
+        cvs = self.tk.Canvas(parent, width=w, height=h, bg=canvas_bg,
+                             highlightthickness=0, bd=0, cursor='hand2')
+
+        def _draw(fill_color, outline_color=None):
+            cvs.delete('b')
+            # 4 corner ovals
+            cvs.create_oval(0, 0, r*2, r*2, fill=fill_color, outline='', tags='b')
+            cvs.create_oval(w - r*2, 0, w, r*2, fill=fill_color, outline='', tags='b')
+            cvs.create_oval(0, h - r*2, r*2, h, fill=fill_color, outline='', tags='b')
+            cvs.create_oval(w - r*2, h - r*2, w, h, fill=fill_color, outline='', tags='b')
+            # 2 cross rectangles
+            cvs.create_rectangle(r, 0, w - r, h, fill=fill_color, outline='', tags='b')
+            cvs.create_rectangle(0, r, w, h - r, fill=fill_color, outline='', tags='b')
+            if outline_color:
+                cvs.create_arc(0, 0, r*2, r*2, start=90, extent=90,
+                               style='arc', outline=outline_color, tags='b')
+                cvs.create_arc(w - r*2, 0, w, r*2, start=0, extent=90,
+                               style='arc', outline=outline_color, tags='b')
+                cvs.create_arc(0, h - r*2, r*2, h, start=180, extent=90,
+                               style='arc', outline=outline_color, tags='b')
+                cvs.create_arc(w - r*2, h - r*2, w, h, start=270, extent=90,
+                               style='arc', outline=outline_color, tags='b')
+                cvs.create_line(r, 0, w - r, 0, fill=outline_color, tags='b')
+                cvs.create_line(r, h, w - r, h, fill=outline_color, tags='b')
+                cvs.create_line(0, r, 0, h - r, fill=outline_color, tags='b')
+                cvs.create_line(w, r, w, h - r, fill=outline_color, tags='b')
+
+        _draw(fill, border_c)
+        cvs.create_text(w // 2, h // 2, text=text, fill=txt_c,
+                        font=('Microsoft YaHei', 10, font_weight), tags='b')
+
+        cvs.bind('<Enter>', lambda e: _draw(hover, border_c))
+        cvs.bind('<Leave>', lambda e: _draw(fill, border_c))
+        cvs.bind('<Button-1>', lambda e: command())
+
+        return cvs
+
+    def _make_theme_preview(self, parent, value, text):
+        """Create a clickable theme option card matching the HTML prototype."""
+        c = self.COLORS
+
+        opt = self.tk.Frame(parent, bg=c['entry_bg'], cursor='hand2')
+        opt.pack(side='left', expand=True, fill='both', padx=(0, 8))
+
+        # Border frame (simulates 2px border when selected)
+        border_frame = self.tk.Frame(opt, bg=c['border'])
+
+        inner = self.tk.Frame(border_frame, bg=c['entry_bg'])
+        inner.pack(padx=2, pady=2, fill='both', expand=True)
+
+        # Preview area (52px tall)
+        preview = self.tk.Frame(inner, height=52, bg=c['entry_bg'])
         preview.pack_propagate(False)
-        preview.pack()
+        preview.pack(fill='x', padx=8, pady=(8, 4))
 
         if value == 'dark':
             preview.configure(bg='#121218')
-            self.tk.Frame(preview, width=40, height=4, bg='#F4845F').pack(pady=(8, 3), padx=8, anchor='w')
-            self.tk.Frame(preview, width=50, height=3, bg='#2D2D3D').pack(pady=1, padx=8, anchor='w')
-            self.tk.Frame(preview, width=30, height=3, bg='#2D2D3D').pack(pady=1, padx=8, anchor='w')
+            self.tk.Frame(preview, width=60, height=5, bg='#F4845F'
+                          ).pack(pady=(10, 4), padx=8, anchor='w')
+            self.tk.Frame(preview, width=80, height=4, bg='#2D2D3D'
+                          ).pack(pady=2, padx=8, anchor='w')
+            self.tk.Frame(preview, width=50, height=4, bg='#2D2D3D'
+                          ).pack(pady=2, padx=8, anchor='w')
         elif value == 'light':
             preview.configure(bg='#FAF7F2')
-            self.tk.Frame(preview, width=40, height=4, bg='#E06B45').pack(pady=(8, 3), padx=8, anchor='w')
-            self.tk.Frame(preview, width=50, height=3, bg='#DDD8CF').pack(pady=1, padx=8, anchor='w')
-            self.tk.Frame(preview, width=30, height=3, bg='#DDD8CF').pack(pady=1, padx=8, anchor='w')
+            self.tk.Frame(preview, width=60, height=5, bg='#E06B45'
+                          ).pack(pady=(10, 4), padx=8, anchor='w')
+            self.tk.Frame(preview, width=80, height=4, bg='#DDD8CF'
+                          ).pack(pady=2, padx=8, anchor='w')
+            self.tk.Frame(preview, width=50, height=4, bg='#DDD8CF'
+                          ).pack(pady=2, padx=8, anchor='w')
         else:  # system — half dark, half light
             preview.configure(bg='#121218')
             half_right = self.tk.Frame(preview, bg='#FAF7F2')
             half_right.pack(side='right', fill='y', expand=True)
+            self.tk.Frame(half_right, width=30, height=5, bg='#E06B45'
+                          ).pack(pady=(10, 4), padx=4, anchor='w')
+            self.tk.Frame(preview, width=30, height=5, bg='#F4845F'
+                          ).pack(pady=(10, 4), padx=8, anchor='w')
 
-        # Radio + label
-        radio_row = self.tk.Frame(opt, bg=c['entry_bg'])
-        radio_row.pack(pady=(4, 0))
-        self.tk.Radiobutton(radio_row, text=text, variable=self.color_mode_var, value=value,
-                            bg=c['entry_bg'], fg=c['fg'], selectcolor=c['entry_bg'],
-                            activebackground=c['entry_bg'], activeforeground=c['fg'],
-                            font=("Microsoft YaHei", 9),
-                            command=self._on_color_mode_changed).pack()
+        # Label
+        lbl = self.tk.Label(inner, text=text, bg=c['entry_bg'],
+                            fg=c['text_secondary'], font=("Microsoft YaHei", 9, "bold"))
+        lbl.pack(pady=(2, 8))
+
+        border_frame.pack(fill='both', expand=True)
+
+        # Click handling
+        def _on_click(e=None):
+            self.color_mode_var.set(value)
+            self._on_color_mode_changed()
+
+        for widget in (opt, border_frame, inner, preview, lbl):
+            widget.bind('<Button-1>', _on_click)
+
+        self._theme_options[value] = (border_frame, lbl)
+
+    def _update_theme_selection(self):
+        """Update visual selection state of theme option cards."""
+        c = self.COLORS
+        selected = self.color_mode_var.get()
+        for value, (border_frame, lbl) in self._theme_options.items():
+            if value == selected:
+                border_frame.configure(bg=c['accent'])
+                lbl.configure(fg=c['accent'])
+            else:
+                border_frame.configure(bg=c['border'])
+                lbl.configure(fg=c['text_secondary'])
 
     # ------------------------------------------------------------------
     # AI tab
@@ -530,10 +734,9 @@ class SettingsPanel:
 
         # Card: 测试连接
         card = self._make_card(tab)
-        self.tk.Button(card, text="测试连接", command=self._test_connection,
-                       bg='transparent', fg=c['accent'], relief="flat",
-                       cursor="hand2", padx=20, pady=4,
-                       font=("Microsoft YaHei", 10, "bold")).pack()
+        self._make_rounded_button(card, "测试连接", self._test_connection,
+                                   style='outline',
+                                   canvas_bg=c['entry_bg']).pack()
 
         self.tk.Frame(tab, height=12, bg=c['bg']).pack()
 
@@ -560,9 +763,9 @@ class SettingsPanel:
         header_frame.pack(fill='x', pady=(0, 8))
         self.tk.Label(header_frame, text="提醒列表", bg=c['entry_bg'], fg=c['fg'],
                       font=("Microsoft YaHei", 10, "bold")).pack(side='left')
-        self.tk.Button(header_frame, text="+ 添加提醒", command=self._add_reminder,
-                       bg=c['accent'], fg="#fff", relief="flat",
-                       cursor="hand2", padx=8, pady=2).pack(side='right')
+        self._make_rounded_button(header_frame, "+ 添加提醒", self._add_reminder,
+                                   style='accent',
+                                   canvas_bg=c['entry_bg']).pack(side='right')
 
         columns = ('name', 'time', 'repeat', 'enabled')
         self.reminder_tree = self.ttk.Treeview(list_frame, columns=columns, show='headings', height=8)
@@ -582,12 +785,12 @@ class SettingsPanel:
 
         btn_frame = self.tk.Frame(tab, bg=c['bg'])
         btn_frame.pack(fill='x', padx=16, pady=(0, 12))
-        self.tk.Button(btn_frame, text="编辑", command=self._edit_reminder,
-                       bg=c['border'], fg=c['fg'], relief="flat",
-                       cursor="hand2", padx=12, pady=2).pack(side='left', padx=(0, 8))
-        self.tk.Button(btn_frame, text="删除", command=self._delete_reminder,
-                       bg=c['danger'], fg="#fff", relief="flat",
-                       cursor="hand2", padx=12, pady=2).pack(side='left', padx=(0, 8))
+        self._make_rounded_button(btn_frame, "编辑", self._edit_reminder,
+                                   style='default',
+                                   canvas_bg=c['bg']).pack(side='left', padx=(0, 8))
+        self._make_rounded_button(btn_frame, "删除", self._delete_reminder,
+                                   style='danger',
+                                   canvas_bg=c['bg']).pack(side='left')
 
         self._load_reminders()
 
@@ -755,7 +958,7 @@ class SettingsPanel:
     # ------------------------------------------------------------------
 
     def _create_buttons(self):
-        """创建底部按钮（带分割线，匹配原型按钮样式）"""
+        """创建底部按钮（带分割线，圆角按钮匹配原型）"""
         c = self.COLORS
         self.button_frame = self.tk.Frame(self.window, bg=c['bg'])
         self.button_frame.pack(side='bottom', fill='x')
@@ -766,14 +969,11 @@ class SettingsPanel:
         btn_inner = self.tk.Frame(self.button_frame, bg=c['bg'])
         btn_inner.pack(fill='x', padx=20, pady=12)
 
-        self.tk.Button(btn_inner, text="保存", command=self._save,
-                       bg=c['accent'], fg="#fff", relief="flat", cursor="hand2",
-                       padx=28, pady=6, font=("Microsoft YaHei", 10, "bold")).pack(side='right', padx=(8, 0))
+        self._make_rounded_button(btn_inner, "保存", self._save,
+                                   style='accent').pack(side='right', padx=(8, 0))
 
-        self.tk.Button(btn_inner, text="取消", command=self.window.destroy,
-                       bg=c['bg'], fg=c['text_secondary'], relief="flat", cursor="hand2",
-                       padx=20, pady=6, font=("Microsoft YaHei", 10),
-                       highlightbackground=c['border'], highlightthickness=1).pack(side='right')
+        self._make_rounded_button(btn_inner, "取消", self.window.destroy,
+                                   style='outline').pack(side='right')
 
     # ------------------------------------------------------------------
     # Helpers
