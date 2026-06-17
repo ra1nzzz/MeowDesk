@@ -1,6 +1,6 @@
 ﻿# -*- mode: python ; coding: utf-8 -*-
 # Single file mode (--onefile): All dependencies packed into one exe
-# MeowDesk v1.4.0 - New modular architecture
+# MeowDesk v1.5.0 - New modular architecture
 
 a = Analysis(
     ['meowdesk_main.py'],

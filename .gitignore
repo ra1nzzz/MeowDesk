@@ -32,3 +32,16 @@ Thumbs.db
 # QoderWork workspace
 .design.json
 *.design.json
+
+# WorkBuddy workspace
+.workbuddy/
+
+# Temp debug screenshots & test outputs
+*_8x.png
+*_8x_full.png
+*_zoomed.png
+*_fixed.png
+bubble_test.png
+gear_*.png
+test_icons_8x.py
+dist2/
