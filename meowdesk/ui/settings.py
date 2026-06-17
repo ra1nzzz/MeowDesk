@@ -732,6 +732,27 @@ class SettingsPanel:
         self.tk.Label(timeout_row, text="秒", bg=c['entry_bg'], fg=c['text_muted'],
                       font=("Microsoft YaHei", 10)).pack(side='left', padx=(4, 0))
 
+        # Card: 自动检测
+        card = self._make_card(tab)
+        self.tk.Label(card, text="自动检测", bg=c['entry_bg'], fg=c['fg'],
+                      font=("Microsoft YaHei", 10, "bold")).pack(anchor='w')
+        self.tk.Label(card, text="扫描本机运行的 OpenClaw / Hermes 并自动配置",
+                      bg=c['entry_bg'], fg=c['text_muted'],
+                      font=("Microsoft YaHei", 9)).pack(anchor='w', pady=(2, 8))
+        self._agent_detect_label = self.tk.Label(card, text="", bg=c['entry_bg'],
+                                                  fg=c['text_muted'],
+                                                  font=("Microsoft YaHei", 9))
+        self._agent_detect_label.pack(anchor='w', pady=(0, 8))
+        # 显示当前自动检测状态
+        if self.config.config.agent_auto_detected:
+            self._agent_detect_label.config(
+                text="(当前配置由自动检测生成)",
+                fg=c['text_muted'],
+            )
+        self._make_rounded_button(card, "自动检测 Agent", self._auto_detect_agent,
+                                   style='outline',
+                                   canvas_bg=c['entry_bg']).pack()
+
         # Card: 测试连接
         card = self._make_card(tab)
         self._make_rounded_button(card, "测试连接", self._test_connection,
@@ -990,26 +1011,77 @@ class SettingsPanel:
     def _on_scale_change(self, v):
         self.scale_label.config(text=self._fmt_scale(v))
 
+    def _auto_detect_agent(self):
+        """扫描本机 AI Agent 并自动填充配置（后台线程执行）。"""
+        import threading
+
+        self._agent_detect_label.config(text="正在检测...", fg=self.COLORS['text_muted'])
+        self.window.update_idletasks()
+
+        def _worker():
+            from ..agent import AgentDetector
+            result = AgentDetector.detect(timeout=5.0)
+            # 回到主线程更新 UI
+            try:
+                self.window.after(0, lambda: self._on_detect_done(result))
+            except Exception:
+                pass
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_detect_done(self, result):
+        """检测完成后在主线程更新 UI。"""
+        if result.found:
+            type_map = {"openclaw": "OpenClaw", "hermes": "Hermes", "custom": "自定义"}
+            type_name = type_map.get(result.agent_type.value, result.agent_type.value)
+            self.agent_type_var.set(result.agent_type.value)
+            self.endpoint_var.set(result.endpoint)
+            self.ai_enabled_var.set(True)
+            self._agent_detect_label.config(
+                text=f"已检测到 {type_name} ({result.endpoint})",
+                fg=self.COLORS.get('success', '#4CAF50'),
+            )
+            verified = "（端点已验证）" if result.endpoint_verified else "（端点未验证，请测试连接）"
+            self._messagebox.showinfo(
+                "自动检测",
+                f"检测到 {type_name}\n端点: {result.endpoint}\n{verified}\n\n已自动填充配置，请点击保存。",
+                parent=self.window,
+            )
+        else:
+            self._agent_detect_label.config(
+                text="未检测到本机 AI Agent",
+                fg=self.COLORS.get('danger', '#F87171'),
+            )
+            self._messagebox.showinfo(
+                "自动检测",
+                "未检测到本机运行的 AI Agent。\n\n请确认 OpenClaw 或 Hermes 已启动，或手动配置。",
+                parent=self.window,
+            )
+
     def _test_connection(self):
-        config = {
-            'enabled': True,
-            'agent_type': self.agent_type_var.get(),
-            'endpoint': self.endpoint_var.get(),
-            'api_key': self.token_var.get(),
-            'timeout': self.timeout_var.get()
-        }
+        """测试 Agent 连接 — 复用 AgentGateway 保证与实际运行时一致。"""
+        from ..agent import AgentGateway
+        from ..core.types import AgentConfig, AgentType
+
         try:
-            import requests
-            response = requests.get(f"{config['endpoint']}/health", timeout=5)
-            if response.status_code == 200:
+            temp_config = AgentConfig(
+                enabled=True,
+                agent_type=AgentType(self.agent_type_var.get()),
+                endpoint=self.endpoint_var.get().strip(),
+                api_key=self.token_var.get().strip(),
+                timeout=self.timeout_var.get(),
+            )
+            gw = AgentGateway(temp_config)
+            if gw.is_available():
                 self._messagebox.showinfo("测试连接", "连接成功！", parent=self.window)
             else:
-                self._messagebox.showwarning("测试连接", f"连接失败：HTTP {response.status_code}",
-                                             parent=self.window)
-        except requests.Timeout:
-            self._messagebox.showerror("测试连接", "连接超时", parent=self.window)
+                self._messagebox.showwarning(
+                    "测试连接",
+                    "连接失败：Agent 未响应，请检查端点和端口。",
+                    parent=self.window,
+                )
         except Exception as e:
-            self._messagebox.showerror("测试连接", f"连接失败：{str(e)}", parent=self.window)
+            self._messagebox.showerror("测试连接", f"连接失败：{e}", parent=self.window)
 
     def _load_reminders(self):
         reminders = self.config.reminders
@@ -1083,60 +1155,53 @@ class SettingsPanel:
     def _save(self):
         from ..core.types import AgentType, FileAction, PeriodRecord
 
-        self.config.set('archive_dir', self.dir_var.get().strip())
-        self.config.set('scale', round(self.scale_var.get(), 2))
-        self.config.set('screenshot_action', FileAction(self.ss_var.get()))
+        with self.config.batch_update():
+            self.config.config.archive_dir = self.dir_var.get().strip()
+            self.config.config.scale = round(self.scale_var.get(), 2)
+            self.config.config.screenshot_action = FileAction(self.ss_var.get())
 
-        try:
-            self.config.set('color_mode', self.color_mode_var.get())
-        except Exception:
-            pass
+            try:
+                self.config.config.color_mode = self.color_mode_var.get()
+            except Exception:
+                pass
 
-        agent_config = self.config.agent_config
-        agent_config.enabled = self.ai_enabled_var.get()
-        agent_config.agent_type = AgentType(self.agent_type_var.get())
-        agent_config.endpoint = self.endpoint_var.get().strip()
-        agent_config.api_key = self.token_var.get().strip()
-        agent_config.timeout = self.timeout_var.get()
-        self.config.config.agent = agent_config
+            agent_config = self.config.agent_config
+            agent_config.enabled = self.ai_enabled_var.get()
+            agent_config.agent_type = AgentType(self.agent_type_var.get())
+            agent_config.endpoint = self.endpoint_var.get().strip()
+            agent_config.api_key = self.token_var.get().strip()
+            agent_config.timeout = self.timeout_var.get()
+            self.config.config.agent = agent_config
 
-        period = self.config.config.period
-        period.enabled = self.period_enabled_var.get()
-        period.mode = self.period_mode_var.get()
-        period.cycle_days = self.cycle_days_var.get()
-        period.period_days = self.period_days_var.get()
+            period = self.config.config.period
+            period.enabled = self.period_enabled_var.get()
+            period.mode = self.period_mode_var.get()
+            period.cycle_days = self.cycle_days_var.get()
+            period.period_days = self.period_days_var.get()
 
-        new_start = self.last_start_var.get().strip()
-        new_end = self.last_end_var.get().strip()
-        if new_start and new_start != period.last_period_start:
-            period.last_period_start = new_start
-            if new_end:
-                period.last_period_end = new_end
-                actual_days = 5
-                try:
-                    start = datetime.strptime(new_start, '%Y-%m-%d')
-                    end = datetime.strptime(new_end, '%Y-%m-%d')
-                    actual_days = (end - start).days + 1
-                except:
-                    pass
-                record = PeriodRecord(start_date=new_start, end_date=new_end, actual_days=actual_days)
-                period.records.append(record)
-                if len(period.records) > 6:
-                    period.records = period.records[-6:]
+            new_start = self.last_start_var.get().strip()
+            new_end = self.last_end_var.get().strip()
+            if new_start and new_start != period.last_period_start:
+                period.last_period_start = new_start
+                if new_end:
+                    period.last_period_end = new_end
+                    actual_days = 5
+                    try:
+                        start = datetime.strptime(new_start, '%Y-%m-%d')
+                        end = datetime.strptime(new_end, '%Y-%m-%d')
+                        actual_days = (end - start).days + 1
+                    except ValueError:
+                        pass
+                    record = PeriodRecord(start_date=new_start, end_date=new_end, actual_days=actual_days)
+                    period.records.append(record)
+                    if len(period.records) > 6:
+                        period.records = period.records[-6:]
 
-        period.calibration_offset = self.calib_offset_var.get()
-        self.config.config.period = period
+            period.calibration_offset = self.calib_offset_var.get()
+            self.config.config.period = period
 
-        try:
-            self.config.set('launch_at_startup', bool(self.launch_var.get()))
-        except Exception:
-            pass
-        try:
             self.config.config.launch_at_startup = bool(self.launch_var.get())
-        except Exception:
-            pass
 
-        self.config.save()
         if self.on_save_callback:
             self.on_save_callback()
         self._messagebox.showinfo("设置", "设置已保存！", parent=self.window)

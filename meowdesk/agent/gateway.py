@@ -9,6 +9,7 @@ import subprocess
 from typing import Dict, Any, Optional, List
 
 from ..core.types import AgentConfig, AgentType
+from .detector import HEALTH_PATHS
 
 # 跨平台 HTTP 请求
 try:
@@ -87,8 +88,7 @@ class AgentGateway:
             return False
 
         # 尝试 HTTP 健康检查
-        paths = ['/health', '/api/health', '/v1/health', '/status', '/']
-        for path in paths:
+        for path in HEALTH_PATHS:
             result = self._request('GET', path)
             if result.get('success'):
                 return True

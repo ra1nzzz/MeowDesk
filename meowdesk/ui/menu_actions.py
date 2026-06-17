@@ -28,24 +28,43 @@ def build_menu_items(window: "MeowWindow") -> MenuSpec:
     Returns a list of (label, callback) pairs and None separators.
     Platform-specific menus (macOS native vs tkinter) can consume
     this structure and render appropriately.
+
+    Agent-dependent items ("自由对话", "AI 工具箱" submenu items)
+    are only included when the agent is available.
+
+    Separator placement mirrors menu.py:_build_menu_order() —
+    conditional separators avoid double separators when agent is off.
     """
 
-    return [
+    agent_available = getattr(window, "agent_available", False)
+
+    items: MenuSpec = [
         ("打开导航页", lambda: action_open_html(window)),
         ("打开归档目录", lambda: action_open_archive_dir(window)),
-        None,
-        ("自由对话", lambda: action_open_chat(window)),
-        ("清理磁盘", lambda: action_clean_disk(window)),
-        ("查看日期", lambda: action_check_date(window)),
-        ("假期提醒", lambda: action_check_holidays(window)),
-        ("经期提醒", lambda: action_period_reminder(window)),
-        ("系统信息", lambda: action_system_info(window)),
-        None,
+    ]
+
+    if agent_available:
+        items.append(("自由对话", lambda: action_open_chat(window)))
+        items.append(None)  # separator before AI tools
+
+        # AI 工具箱子菜单项 — 顺序与 menu.py SUBMENU_ITEMS 一致
+        items.extend([
+            ("清理磁盘", lambda: action_clean_disk(window)),
+            ("系统信息", lambda: action_system_info(window)),
+            ("查看日期", lambda: action_check_date(window)),
+            ("假期提醒", lambda: action_check_holidays(window)),
+            ("经期提醒", lambda: action_period_reminder(window)),
+        ])
+
+    items.append(None)  # separator before settings
+    items.extend([
         ("设置", lambda: action_open_settings(window)),
         ("关于", lambda: action_show_about(window)),
         None,
         ("退出", window.quit),
-    ]
+    ])
+
+    return items
 
 
 def action_open_html(window: "MeowWindow") -> None:
@@ -145,17 +164,18 @@ def action_check_holidays(window: "MeowWindow") -> None:
     if result["success"]:
         holidays = result["result"]["upcoming_holidays"]
         if holidays:
-            msg = "🎉 即将到来的假期:\n"
+            msg = "即将到来的假期:\n"
             for h in holidays[:5]:
                 name = h["name"]
                 date = h["date"]
                 days_left = h["days_left"]
                 if days_left == 0:
-                    msg += f"• {name}: {date} (今天!)\n"
+                    msg += f"  {name}: {date} (今天!)\n"
                 elif days_left == 1:
-                    msg += f"• {name}: {date} (明天)\n"
+                    msg += f"  {name}: {date} (明天)\n"
                 else:
-                    msg += f"• {name}: {date} (还有 {days_left} 天)\n"
+                    msg += f"  {name}: {date} (还有 {days_left} 天)\n"
+            msg = msg.rstrip("\n")
             window.state.show_bubble(msg, 120)
         else:
             window.state.show_bubble("近期没有假期", 80)
@@ -178,7 +198,10 @@ def action_open_chat(window: "MeowWindow") -> None:
     from .chat import ChatWindow
     parent = getattr(window, "parent", None)
     agent_gateway = getattr(window, "agent_gateway", None)
-    if parent is None or agent_gateway is None:
+    if parent is None:
+        return
+    if agent_gateway is None or not agent_gateway.enabled:
+        window.state.show_bubble("请在设置中配置并启用 AI Agent", 80)
         return
     ChatWindow(parent, window.config, agent_gateway=agent_gateway)
 

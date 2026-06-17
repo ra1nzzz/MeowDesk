@@ -212,6 +212,8 @@ class AppConfig:
     scale: float = 0.5
     launch_at_startup: bool = False
     color_mode: str = "dark"             # dark / light / system
+    first_run_completed: bool = False     # 是否已完成首次运行流程
+    agent_auto_detected: bool = False     # agent 是否由自动检测启用
 
     # ---- container / nested fields (require custom (de)serialisation) ----
     # These are deliberately listed *after* the scalar fields so
@@ -232,6 +234,8 @@ class AppConfig:
         "scale",
         "launch_at_startup",
         "color_mode",
+        "first_run_completed",
+        "agent_auto_detected",
     )
 
     @classmethod

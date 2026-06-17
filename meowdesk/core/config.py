@@ -4,7 +4,8 @@
 """
 
 import os
-from typing import Any, Dict, Optional
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator, Optional
 
 from ..utils import get_logger
 from ..utils.io import atomic_write_json, load_json_with_backup
@@ -19,12 +20,18 @@ class ConfigManager:
 
     def __init__(self, config_path: str):
         self.config_path = config_path
+        self._was_first_run = not os.path.exists(self.config_path)
         self._config: AppConfig = self._load()
 
     @property
     def config(self) -> AppConfig:
         """获取配置对象"""
         return self._config
+
+    @property
+    def is_first_run(self) -> bool:
+        """是否为首次运行（配置文件之前不存在）。"""
+        return self._was_first_run and not self._config.first_run_completed
 
     def _load(self) -> AppConfig:
         """加载配置文件"""
@@ -102,6 +109,22 @@ class ConfigManager:
         setattr(self._config, key, value)
         return self.save()
 
+    @contextmanager
+    def batch_update(self) -> Iterator[None]:
+        """批量更新上下文管理器 — 在 with 块内修改字段，
+        退出时只保存一次，避免多次磁盘 I/O。
+
+        用法::
+
+            with config.batch_update():
+                config.config.scale = 0.6
+                config.config.color_mode = 'light'
+                config.config.agent = new_agent_config
+            # 退出 with 块时自动 save() 一次
+        """
+        yield
+        self.save()
+
     # ========== 便捷方法 ==========
 
     @property
@@ -119,6 +142,11 @@ class ConfigManager:
     @property
     def agent_config(self) -> AgentConfig:
         return self._config.agent
+
+    def mark_first_run_completed(self) -> bool:
+        """标记首次运行流程已完成。"""
+        self._config.first_run_completed = True
+        return self.save()
 
     @property
     def reminders(self) -> list:

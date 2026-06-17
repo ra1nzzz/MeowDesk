@@ -489,18 +489,22 @@ def _get_icon(label: str, variant: str = 'normal'):
 
 DANGER_LABELS = {"退出"}
 
-PROTOTYPE_ORDER = [
-    "打开导航页",
-    "打开归档目录",
-    "自由对话",
-    None,
-    "SUBMENU",
-    None,
-    "设置",
-    "关于",
-    None,
-    "退出",
-]
+
+def _build_menu_order(agent_available: bool) -> list:
+    """根据 agent 可用性动态生成菜单项顺序。
+
+    agent 不可用时，移除"自由对话"和"AI 工具箱"子菜单。
+    分隔符采用条件性添加策略，避免连续分隔符。
+    """
+    order = ["打开导航页", "打开归档目录"]
+    if agent_available:
+        order.append("自由对话")
+        order.append(None)  # separator before AI tools
+        order.append("SUBMENU")
+    order.append(None)  # separator before settings
+    order += ["设置", "关于", None, "退出"]
+    return order
+
 
 SUBMENU_ITEMS = [
     "清理磁盘",
@@ -577,6 +581,15 @@ class ContextMenu:
     # Build callback map
     # ------------------------------------------------------------------
 
+    def _get_menu_order(self) -> list:
+        """根据当前 agent 状态动态获取菜单顺序。"""
+        agent_available = False
+        if self.window is not None:
+            agent_available = getattr(self.window, "agent_available", False)
+        elif self.agent_gateway is not None:
+            agent_available = getattr(self.agent_gateway, "enabled", False)
+        return _build_menu_order(agent_available)
+
     def _build_items_map(self):
         from .menu_actions import build_menu_items
         menu_window = self.window or _MenuWindowAdapter(
@@ -590,22 +603,18 @@ class ContextMenu:
         for item in items:
             if item is not None:
                 label, callback = item
-                clean = label
-                for prefix in ("\U0001F4AC ", "\U0001F9F9 ", "\U0001F4C5 ",
-                               "\U0001F389 ", "\u2764 ", "\U0001F4BB "):
-                    if clean.startswith(prefix):
-                        clean = clean[len(prefix):]
-                        break
-                item_map[clean] = callback
+                item_map[label] = callback
         return item_map
 
     # ------------------------------------------------------------------
     # Height calculation
     # ------------------------------------------------------------------
 
-    def _calc_main_height(self):
+    def _calc_main_height(self, menu_order=None):
+        if menu_order is None:
+            menu_order = self._get_menu_order()
         h = self.PADDING_Y * 2
-        for item in PROTOTYPE_ORDER:
+        for item in menu_order:
             if item is None:
                 h += self.SEPARATOR_HEIGHT + self.SEPARATOR_MARGIN_Y * 2
             else:
@@ -987,7 +996,8 @@ class ContextMenu:
         self._menu_window.attributes('-topmost', True)
 
         w = self.MENU_WIDTH
-        h = self._calc_main_height()
+        menu_order = self._get_menu_order()
+        h = self._calc_main_height(menu_order)
         r = self.RADIUS
 
         canvas = tk.Canvas(self._menu_window, width=w, height=h,
@@ -1006,7 +1016,7 @@ class ContextMenu:
         y = self.PADDING_Y
         self._submenu_trigger_y = None
 
-        for item in PROTOTYPE_ORDER:
+        for item in menu_order:
             if item is None:
                 sep_y = y + self.SEPARATOR_MARGIN_Y
                 sep_frame = tk.Frame(overlay, height=1, bg=c['separator'])

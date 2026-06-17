@@ -6,12 +6,13 @@
 """
 
 import sys
+import threading
 import time
 from typing import Callable, List, Optional
 
 from PIL import Image
 
-from ..agent import AgentGateway
+from ..agent import AgentGateway, detect_and_configure
 from ..core import (
     ConfigManager,
     FileClassifier,
@@ -100,6 +101,10 @@ class MeowWindow:
 
         if hasattr(self.platform_window, "root") and self.platform_window.root:
             self.parent = self.platform_window.root
+
+            # 首次运行时自动检测本机 Agent
+            self._auto_detect_agent()
+
             self.agent_gateway = AgentGateway(self.config.agent_config)
             from .menu import ContextMenu
             self.context_menu = ContextMenu(
@@ -240,7 +245,7 @@ class MeowWindow:
         if self._drop_handler:
             self._drop_handler.receive(files)
 
-    def _on_right_click(self, x: int = None, y: int = None) -> None:
+    def _on_right_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         if not self.platform_window:
             return
         if sys.platform == "darwin":
@@ -257,12 +262,69 @@ class MeowWindow:
         menu_items = build_menu_items(self)
         self.platform_window.show_context_menu(menu_items)
 
+    def _auto_detect_agent(self) -> None:
+        """首次运行时在后台线程自动检测本机 AI Agent。
+
+        仅在以下条件全部满足时执行：
+        - 首次运行（config.json 之前不存在）
+        - agent 当前未启用
+
+        检测在后台线程执行，不阻塞 UI。
+        结果通过 after() 回调到主线程更新配置和 agent_gateway。
+        """
+        try:
+            if not self.config.is_first_run:
+                return
+            if self.config.agent_config.enabled:
+                self.config.mark_first_run_completed()
+                return
+
+            _log.info("first run detected, scanning for local AI agent...")
+
+            def _worker():
+                result = detect_and_configure(self.config, timeout=5.0)
+                # 回到主线程更新 agent_gateway
+                if result.found and self.parent is not None:
+                    try:
+                        self.parent.after(0, self._on_agent_detected)
+                    except Exception:
+                        pass
+
+            threading.Thread(target=_worker, daemon=True).start()
+        except Exception:
+            _log.exception("agent auto-detection failed")
+            try:
+                self.config.mark_first_run_completed()
+            except Exception:
+                pass
+
+    def _on_agent_detected(self) -> None:
+        """后台检测成功后，在主线程重建 agent_gateway 和菜单。"""
+        self.agent_gateway = AgentGateway(self.config.agent_config)
+        if self.context_menu is not None:
+            # 菜单在下次 show() 时自动重建，无需显式操作
+            pass
+        _log.info("agent_gateway updated after auto-detection")
+
+    @property
+    def agent_available(self) -> bool:
+        """Agent 是否可用（已启用且网关存在）。"""
+        return (
+            self.agent_gateway is not None
+            and self.agent_gateway.enabled
+        )
+
     def _on_settings_saved(self) -> None:
         from ..platform import set_launch_at_startup
         try:
             set_launch_at_startup(bool(self.config.config.launch_at_startup))
         except Exception:
             pass
+
+        # 同步 agent_gateway 配置
+        if self.agent_gateway is not None:
+            self.agent_gateway = AgentGateway(self.config.agent_config)
+
         scale = self.config.config.scale
         if abs(scale - self.animation.scale) > 0.01:
             self.animation = AnimationManager(self.assets_dir, scale)
