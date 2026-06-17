@@ -211,6 +211,7 @@ class AppConfig:
     window_position: Optional[Tuple[int, int]] = None
     scale: float = 0.5
     launch_at_startup: bool = False
+    color_mode: str = "dark"             # dark / light / system
 
     # ---- container / nested fields (require custom (de)serialisation) ----
     # These are deliberately listed *after* the scalar fields so
@@ -230,6 +231,7 @@ class AppConfig:
         "window_position",
         "scale",
         "launch_at_startup",
+        "color_mode",
     )
 
     @classmethod

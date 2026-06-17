@@ -231,8 +231,11 @@ class WindowsWindow(PlatformWindow):
     def get_position(self) -> Tuple[int, int]:
         """获取窗口位置"""
         if self.root:
-            self.root.update_idletasks()
-            return self.root.winfo_x(), self.root.winfo_y()
+            try:
+                self.root.update_idletasks()
+                return self.root.winfo_x(), self.root.winfo_y()
+            except Exception:
+                pass
         return self.x, self.y
     
     def set_size(self, width: int, height: int):
@@ -284,8 +287,11 @@ class WindowsWindow(PlatformWindow):
         if self.ulw_renderer:
             self.ulw_renderer.cleanup()
         if self.root:
-            self.root.quit()
-            self.root.destroy()
+            try:
+                self.root.quit()
+                self.root.destroy()
+            except Exception:
+                pass
 
 
 class ULWRenderer:

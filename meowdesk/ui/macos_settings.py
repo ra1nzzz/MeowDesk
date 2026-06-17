@@ -36,17 +36,17 @@ from datetime import datetime
 config = ConfigProxy(config_path)
 
 COLORS = {
-    'bg': '#1e1e2e',
-    'fg': '#cdd6f4',
-    'entry_bg': '#313244',
-    'accent': '#89b4fa',
-    'accent_hover': '#b4d0fb',
-    'danger': '#f38ba8',
-    'success': '#a6e3a1',
-    'warning': '#f9e2af',
-    'border': '#45475a',
-    'select_bg': '#585b70',
-    'select_indicator': '#89b4fa',
+    'bg': '#121218',
+    'fg': '#F0EDE8',
+    'entry_bg': '#22222E',
+    'accent': '#F4845F',
+    'accent_hover': '#F69B7D',
+    'danger': '#F87171',
+    'success': '#6EE7A0',
+    'warning': '#FBBF5C',
+    'border': '#2D2D3D',
+    'select_bg': '#2A2A38',
+    'select_indicator': '#F4845F',
 }
 
 FONT = 'PingFang SC'

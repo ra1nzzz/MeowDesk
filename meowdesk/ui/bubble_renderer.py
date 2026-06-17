@@ -15,8 +15,8 @@ def draw_bubble(
     frame: Image.Image,
     text: str,
     font_size: int = 14,
-    bubble_fill: Tuple[int, int, int, int] = (30, 30, 50, 220),
-    bubble_outline: Tuple[int, int, int, int] = (100, 100, 180, 180),
+    bubble_fill: Tuple[int, int, int, int] = (40, 35, 50, 220),
+    bubble_outline: Tuple[int, int, int, int] = (244, 132, 95, 180),
     text_color: Tuple[int, int, int, int] = (255, 255, 255, 255),
 ) -> Image.Image:
     """Draw a speech bubble above the cat frame.

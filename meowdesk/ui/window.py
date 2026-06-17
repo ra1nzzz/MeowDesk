@@ -140,13 +140,22 @@ class MeowWindow:
             self.platform_window.run()
 
     def quit(self) -> None:
-        if self.platform_window:
-            x, y = self.platform_window.get_position()
-            self.config.set("window_position", [x, y])
-        if self.on_quit_callback:
-            self.on_quit_callback()
-        if self.platform_window:
-            self.platform_window.quit()
+        try:
+            if self.platform_window:
+                x, y = self.platform_window.get_position()
+                self.config.set("window_position", [x, y])
+        except Exception:
+            pass
+        try:
+            if self.on_quit_callback:
+                self.on_quit_callback()
+        except Exception:
+            pass
+        try:
+            if self.platform_window:
+                self.platform_window.quit()
+        except Exception:
+            pass
 
     def _move_to_saved_position(self) -> None:
         saved_pos = self.config.config.window_position

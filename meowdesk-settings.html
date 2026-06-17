@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>妙喵桌宠 - 设置</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;550;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-base: #121218;
+  --bg-elevated: #1A1A24;
+  --bg-card: #22222E;
+  --bg-input: #2A2A38;
+
+  --primary: #F4845F;
+  --primary-hover: #F69B7D;
+  --secondary: #7EC8B8;
+  --secondary-hover: #96D5C8;
+  --accent: #C4A1FF;
+
+  --text-primary: #F0EDE8;
+  --text-secondary: #A8A4B8;
+  --text-muted: #6B6880;
+
+  --danger: #F87171;
+  --success: #6EE7A0;
+  --warning: #FBBF5C;
+
+  --border: #2D2D3D;
+  --border-hover: #44445A;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans SC', 'Microsoft YaHei', -apple-system, sans-serif;
+  background: #0a0a10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.settings-window {
+  width: 680px;
+  height: 520px;
+  background: var(--bg-base);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+  display: flex;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 160px;
+  min-width: 160px;
+  background: var(--bg-elevated);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-brand {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-brand-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.sidebar-brand span {
+  font-family: 'Nunito', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  border-left: 3px solid transparent;
+  transition: background 150ms, color 150ms, border-color 150ms;
+  user-select: none;
+}
+
+.nav-item svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 150ms;
+}
+
+.nav-item:hover {
+  background: rgba(244, 132, 95, 0.06);
+}
+
+.nav-item.active {
+  border-left-color: var(--primary);
+  background: rgba(244, 132, 95, 0.1);
+  color: var(--primary);
+}
+
+.nav-item.active svg {
+  opacity: 1;
+}
+
+.sidebar-footer {
+  padding: 16px 20px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+/* Content area */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.content-scroll::-webkit-scrollbar { width: 5px; }
+.content-scroll::-webkit-scrollbar-track { background: transparent; }
+.content-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.content-title {
+  font-family: 'Nunito', 'Microsoft YaHei', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+}
+
+/* Tab panels */
+.tab-panel {
+  display: none;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.tab-panel.active {
+  display: block;
+  opacity: 1;
+}
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  transition: border-color 200ms;
+}
+
+.card:hover {
+  border-color: var(--border-hover);
+}
+
+.card-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+/* Input row */
+.input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.input-field {
+  flex: 1;
+  height: 38px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(244, 132, 95, 0.15);
+}
+
+.btn-browse {
+  height: 38px;
+  padding: 0 16px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 550;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms;
+}
+
+.btn-browse:hover { background: var(--primary-hover); }
+
+/* Slider */
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.slider-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  font-family: 'Nunito', sans-serif;
+}
+
+.slider-wrap {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.slider-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+}
+
+.slider-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+  width: 75%;
+  transition: width 100ms;
+}
+
+.slider-thumb {
+  position: absolute;
+  top: 50%;
+  left: 75%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2.5px solid var(--primary);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  transition: box-shadow 150ms;
+}
+
+.slider-thumb:hover {
+  box-shadow: 0 0 0 4px rgba(244, 132, 95, 0.15);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Radio */
+.radio-group {
+  display: flex;
+  gap: 20px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: color 150ms;
+}
+
+.radio-option.selected { color: var(--text-primary); }
+
+.radio-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 200ms;
+  flex-shrink: 0;
+}
+
+.radio-option.selected .radio-circle {
+  border-color: var(--primary);
+}
+
+.radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  transform: scale(0);
+  transition: transform 200ms;
+}
+
+.radio-option.selected .radio-dot {
+  transform: scale(1);
+}
+
+/* Toggle */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--border);
+  cursor: pointer;
+  position: relative;
+  transition: background 200ms;
+  flex-shrink: 0;
+}
+
+.toggle-switch.on {
+  background: var(--secondary);
+}
+
+.toggle-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 200ms;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.toggle-switch.on .toggle-thumb {
+  transform: translateX(20px);
+}
+
+.toggle-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* Button bar */
+.button-bar {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-save {
+  height: 38px;
+  padding: 0 28px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.btn-save:hover { background: var(--primary-hover); }
+
+.btn-cancel {
+  height: 38px;
+  padding: 0 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms;
+}
+
+.btn-cancel:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+/* Section divider inside cards */
+.card-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+
+/* AI tab specific */
+.model-select {
+  height: 38px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%236B6880' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.model-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(244, 132, 95, 0.15);
+}
+
+/* Textarea */
+.textarea-field {
+  width: 100%;
+  min-height: 72px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  line-height: 1.5;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.textarea-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(244, 132, 95, 0.15);
+}
+
+/* Reminder items */
+.reminder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.reminder-item:last-child { border-bottom: none; }
+
+.reminder-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reminder-time {
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.reminder-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: rgba(110, 231, 160, 0.12);
+  color: var(--success);
+}
+
+.badge-warning {
+  background: rgba(251, 191, 92, 0.12);
+  color: var(--warning);
+}
+
+/* Spinbox */
+.spinbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinbox-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 16px;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 200ms, background 200ms;
+  flex-shrink: 0;
+}
+
+.spinbox-btn:hover {
+  border-color: var(--primary);
+  background: rgba(244, 132, 95, 0.08);
+}
+
+.spinbox-btn:active {
+  background: rgba(244, 132, 95, 0.15);
+}
+
+.spinbox-field {
+  width: 56px;
+  height: 32px;
+  text-align: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 600;
+  outline: none;
+}
+
+.spinbox-unit {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Test connection button */
+.btn-test {
+  height: 36px;
+  padding: 0 24px;
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 200ms, color 200ms;
+}
+
+.btn-test:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.test-result {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  min-height: 18px;
+}
+
+.test-result.success { color: var(--success); }
+.test-result.error { color: var(--danger); }
+
+/* Theme selector */
+.theme-selector {
+  display: flex;
+  gap: 12px;
+}
+
+.theme-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  transition: border-color 200ms, background 200ms;
+  user-select: none;
+}
+
+.theme-option:hover {
+  background: rgba(244, 132, 95, 0.04);
+}
+
+.theme-option.selected {
+  border-color: var(--primary);
+  background: rgba(244, 132, 95, 0.06);
+}
+
+.theme-option span {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--text-secondary);
+  transition: color 150ms;
+}
+
+.theme-option.selected span {
+  color: var(--primary);
+}
+
+.theme-preview {
+  width: 100%;
+  height: 52px;
+  border-radius: 6px;
+  overflow: hidden;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border: 1px solid var(--border);
+}
+
+.theme-preview-dark {
+  background: #121218;
+}
+.theme-preview-dark .theme-preview-bar {
+  width: 60%;
+  height: 6px;
+  border-radius: 3px;
+  background: #F4845F;
+}
+.theme-preview-dark .theme-preview-line {
+  width: 80%;
+  height: 4px;
+  border-radius: 2px;
+  background: #2D2D3D;
+}
+.theme-preview-dark .theme-preview-line.short {
+  width: 50%;
+}
+
+.theme-preview-light {
+  background: #FAF7F2;
+  border-color: #DDD8CF;
+}
+.theme-preview-light .theme-preview-bar {
+  width: 60%;
+  height: 6px;
+  border-radius: 3px;
+  background: #E06B45;
+}
+.theme-preview-light .theme-preview-line {
+  width: 80%;
+  height: 4px;
+  border-radius: 2px;
+  background: #DDD8CF;
+}
+.theme-preview-light .theme-preview-line.short {
+  width: 50%;
+}
+
+.theme-preview-system {
+  display: flex;
+  flex-direction: row;
+  padding: 0;
+  overflow: hidden;
+}
+.theme-preview-half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 5px;
+  justify-content: center;
+}
+.theme-preview-half.dark-half {
+  background: #121218;
+}
+.theme-preview-half.dark-half .theme-preview-bar {
+  width: 70%;
+  height: 6px;
+  border-radius: 3px;
+  background: #F4845F;
+}
+.theme-preview-half.light-half {
+  background: #FAF7F2;
+}
+.theme-preview-half.light-half .theme-preview-bar {
+  width: 70%;
+  height: 6px;
+  border-radius: 3px;
+  background: #E06B45;
+}
+
+/* ===== Light theme ===== */
+html[data-theme="light"] {
+  --bg-base: #FAF7F2;
+  --bg-elevated: #F2EDE4;
+  --bg-card: #FFFFFF;
+  --bg-input: #F0EBE2;
+
+  --primary: #E06B45;
+  --primary-hover: #D45A36;
+  --secondary: #5BA896;
+  --secondary-hover: #4A9785;
+  --accent: #9B72CF;
+
+  --text-primary: #2D2A33;
+  --text-secondary: #6B6578;
+  --text-muted: #9C97AA;
+
+  --danger: #D94444;
+  --success: #2DA35E;
+  --warning: #C98E20;
+
+  --border: #DDD8CF;
+  --border-hover: #C4BFB6;
+}
+
+html[data-theme="light"] body {
+  background: #E5E0D8;
+}
+
+html[data-theme="light"] .settings-window {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06);
+}
+
+html[data-theme="light"] .nav-item:hover {
+  background: rgba(224, 107, 69, 0.06);
+}
+
+html[data-theme="light"] .nav-item.active {
+  background: rgba(224, 107, 69, 0.08);
+}
+
+html[data-theme="light"] .slider-thumb {
+  background: var(--bg-card);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+html[data-theme="light"] .toggle-thumb {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+html[data-theme="light"] .theme-preview-dark {
+  border-color: var(--border);
+}
+
+html[data-theme="light"] .model-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%239C97AA' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+}
+
+/* ===== Period tab specific ===== */
+.dual-spinbox-row {
+  display: flex;
+  gap: 20px;
+}
+
+.spinbox-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spinbox-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.spinbox-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.dual-date-row {
+  display: flex;
+  gap: 12px;
+}
+
+.date-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.input-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Prediction card */
+.card-prediction {
+  background: rgba(244, 132, 95, 0.06);
+  border-color: rgba(244, 132, 95, 0.2);
+}
+
+html[data-theme="light"] .card-prediction {
+  background: rgba(224, 107, 69, 0.06);
+  border-color: rgba(224, 107, 69, 0.15);
+}
+
+.prediction-value {
+  font-family: 'Nunito', 'Microsoft YaHei', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
+
+.prediction-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Calibration */
+.calibration-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.calibration-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.calibration-value {
+  font-family: 'Nunito', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 24px;
+  text-align: center;
+}
+
+.calibration-btns {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.calib-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 550;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 200ms, color 200ms, background 200ms;
+  white-space: nowrap;
+}
+
+.calib-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.calib-btn-reset {
+  color: var(--text-muted);
+}
+
+.calib-btn-reset:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* History */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.history-item:first-child {
+  padding-top: 0;
+}
+
+.history-date {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.history-duration {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+</style>
+</head>
+<body>
+
+<main class="settings-window" role="dialog" aria-label="妙喵桌宠设置面板">
+  <!-- Sidebar -->
+  <div class="sidebar" data-component="sidebar">
+    <div class="sidebar-brand">
+      <img src="asset/icon.png" alt="妙喵桌宠" class="sidebar-brand-icon">
+      <span>妙喵桌宠</span>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="设置分类导航">
+      <div class="nav-item active" data-tab="general" role="tab" tabindex="0" aria-selected="true">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="9" r="3"/>
+          <path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.4 3.4l1.4 1.4M13.2 13.2l1.4 1.4M3.4 14.6l1.4-1.4M13.2 4.8l1.4-1.4"/>
+        </svg>
+        常规
+      </div>
+      <div class="nav-item" data-tab="ai" role="tab" tabindex="0" aria-selected="false">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="12" height="10" rx="2"/>
+          <circle cx="7" cy="10" r="1" fill="currentColor" stroke="none"/>
+          <circle cx="11" cy="10" r="1" fill="currentColor" stroke="none"/>
+          <path d="M7 13h4"/>
+          <path d="M9 2v3M6 3l1.5 2M12 3l-1.5 2"/>
+        </svg>
+        AI 助手
+      </div>
+      <div class="nav-item" data-tab="reminders" role="tab" tabindex="0" aria-selected="false">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13.5 6.5a4.5 4.5 0 10-9 0c0 4.5-2 6-2 6h13s-2-1.5-2-6"/>
+          <path d="M10.3 15.5a1.5 1.5 0 01-2.6 0"/>
+        </svg>
+        定时提醒
+      </div>
+      <div class="nav-item" data-tab="period" role="tab" tabindex="0" aria-selected="false">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 15.5s-5.5-3.5-5.5-7.5a3.5 3.5 0 017 0 3.5 3.5 0 017 0c0 4-5.5 7.5-5.5 7.5z"/>
+        </svg>
+        经期提醒
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">v1.4.0</div>
+  </div>
+
+  <!-- Content -->
+  <div class="content-area" data-component="content">
+    <div class="content-scroll">
+
+      <!-- General Tab -->
+      <div class="tab-panel active" id="panel-general" role="tabpanel" aria-label="常规设置面板">
+        <h2 class="content-title">常规设置</h2>
+
+        <div class="card">
+          <div class="card-label">归档目录</div>
+          <div class="card-desc">设置文件归档的默认保存路径</div>
+          <div class="input-row">
+            <input class="input-field" type="text" value="D:\Documents\MeowDesk\Archive" readonly aria-label="归档目录路径">
+            <button class="btn-browse">浏览...</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="slider-header">
+            <div>
+              <div class="card-label">宠物大小</div>
+              <div class="card-desc">调整桌面宠物的显示尺寸</div>
+            </div>
+            <span class="slider-value" id="scale-value">75%</span>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-track" id="scale-track">
+              <div class="slider-fill" id="scale-fill"></div>
+              <div class="slider-thumb" id="scale-thumb" role="slider" aria-label="宠物大小" aria-valuemin="25" aria-valuemax="100" aria-valuenow="75" tabindex="0"></div>
+            </div>
+          </div>
+          <div class="slider-labels">
+            <span>25%</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">截图处理</div>
+          <div class="card-desc">截图完成后的默认操作</div>
+          <div class="radio-group" role="radiogroup" aria-label="截图处理方式">
+            <div class="radio-option selected" data-radio="screenshot" role="radio" aria-checked="true">
+              <div class="radio-circle"><div class="radio-dot"></div></div>
+              移入回收站
+            </div>
+            <div class="radio-option" data-radio="screenshot" role="radio" aria-checked="false">
+              <div class="radio-circle"><div class="radio-dot"></div></div>
+              保留到图片
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toggle-row">
+            <div>
+              <div class="card-label">启动行为</div>
+            </div>
+            <div class="toggle-switch on" id="toggle-autostart" role="switch" aria-checked="true" aria-label="随系统启动">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="toggle-desc">随系统启动 — 开机后自动启动妙喵桌宠</div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">色彩模式</div>
+          <div class="card-desc">选择界面的显示主题</div>
+          <div class="theme-selector" role="radiogroup" aria-label="色彩模式选择">
+            <div class="theme-option selected" data-theme-choice="dark" role="radio" aria-checked="true" tabindex="0">
+              <div class="theme-preview theme-preview-dark">
+                <div class="theme-preview-bar"></div>
+                <div class="theme-preview-line"></div>
+                <div class="theme-preview-line short"></div>
+              </div>
+              <span>深色</span>
+            </div>
+            <div class="theme-option" data-theme-choice="light" role="radio" aria-checked="false" tabindex="0">
+              <div class="theme-preview theme-preview-light">
+                <div class="theme-preview-bar"></div>
+                <div class="theme-preview-line"></div>
+                <div class="theme-preview-line short"></div>
+              </div>
+              <span>浅色</span>
+            </div>
+            <div class="theme-option" data-theme-choice="system" role="radio" aria-checked="false" tabindex="0">
+              <div class="theme-preview theme-preview-system">
+                <div class="theme-preview-half dark-half">
+                  <div class="theme-preview-bar"></div>
+                </div>
+                <div class="theme-preview-half light-half">
+                  <div class="theme-preview-bar"></div>
+                </div>
+              </div>
+              <span>跟随系统</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Tab -->
+      <div class="tab-panel" id="panel-ai" role="tabpanel" aria-label="AI助手设置面板">
+        <h2 class="content-title">AI 助手设置</h2>
+
+        <div class="card">
+          <div class="toggle-row">
+            <div class="card-label">启用 AI 助手</div>
+            <div class="toggle-switch on" id="toggle-ai" data-toggle role="switch" aria-checked="true" aria-label="启用AI助手">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="toggle-desc">开启后可在右键菜单中使用 AI 对话功能</div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">网关类型</div>
+          <div class="card-desc">选择本地已部署的 AI 网关服务</div>
+          <div class="radio-group" role="radiogroup" aria-label="AI网关类型选择">
+            <div class="radio-option selected" data-radio="gateway" role="radio" aria-checked="true">
+              <div class="radio-circle"><div class="radio-dot"></div></div>
+              OpenClaw
+            </div>
+            <div class="radio-option" data-radio="gateway" role="radio" aria-checked="false">
+              <div class="radio-circle"><div class="radio-dot"></div></div>
+              Hermes
+            </div>
+            <div class="radio-option" data-radio="gateway" role="radio" aria-checked="false">
+              <div class="radio-circle"><div class="radio-dot"></div></div>
+              自定义
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">网关地址</div>
+          <div class="card-desc">AI 网关服务的访问端点 URL</div>
+          <input class="input-field" type="text" value="http://localhost:3000/v1" style="width:100%" aria-label="网关地址" placeholder="http://localhost:3000/v1">
+        </div>
+
+        <div class="card">
+          <div class="card-label">API Token</div>
+          <div class="card-desc">连接 AI 服务的访问凭证</div>
+          <input class="input-field" type="password" value="sk-xxxxxxxxxxxx" style="width:100%" aria-label="API Token">
+        </div>
+
+        <div class="card">
+          <div class="card-label">请求超时</div>
+          <div class="card-desc">AI 请求的最大等待时间（秒）</div>
+          <div class="spinbox-row">
+            <button class="spinbox-btn" aria-label="减少超时时间" onclick="adjustSpinbox(-5)">−</button>
+            <input class="spinbox-field" type="text" value="30" id="timeout-value" aria-label="超时秒数" readonly>
+            <span class="spinbox-unit">秒</span>
+            <button class="spinbox-btn" aria-label="增加超时时间" onclick="adjustSpinbox(5)">+</button>
+          </div>
+        </div>
+
+        <div class="card" style="text-align:center">
+          <button class="btn-test" onclick="testConnection()">测试连接</button>
+          <div class="test-result" id="test-result"></div>
+        </div>
+      </div>
+
+      <!-- Reminders Tab -->
+      <div class="tab-panel" id="panel-reminders" role="tabpanel" aria-label="定时提醒设置面板">
+        <h2 class="content-title">定时提醒</h2>
+
+        <div class="card">
+          <div class="toggle-row">
+            <div class="card-label">启用定时提醒</div>
+            <div class="toggle-switch on" data-toggle role="switch" aria-checked="true" aria-label="启用定时提醒">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="toggle-desc">开启后，宠物会在设定时间弹出提醒气泡</div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">提醒计划</div>
+          <div class="card-desc">已配置的每日提醒时间点</div>
+          <div class="reminder-item">
+            <div class="reminder-info">
+              <span class="reminder-time">09:30</span>
+              <span class="reminder-label">喝水提醒</span>
+            </div>
+            <span class="badge badge-success">已启用</span>
+          </div>
+          <div class="reminder-item">
+            <div class="reminder-info">
+              <span class="reminder-time">12:00</span>
+              <span class="reminder-label">午休提醒</span>
+            </div>
+            <span class="badge badge-success">已启用</span>
+          </div>
+          <div class="reminder-item">
+            <div class="reminder-info">
+              <span class="reminder-time">18:00</span>
+              <span class="reminder-label">休息眼睛</span>
+            </div>
+            <span class="badge badge-warning">已暂停</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">提醒间隔</div>
+          <div class="card-desc">两次提醒之间的最小间隔时间</div>
+          <select class="model-select" aria-label="选择提醒间隔时间">
+            <option>30 分钟</option>
+            <option selected>1 小时</option>
+            <option>2 小时</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Period Tab -->
+      <div class="tab-panel" id="panel-period" role="tabpanel" aria-label="经期提醒设置面板">
+        <h2 class="content-title">经期提醒</h2>
+
+        <div class="card">
+          <div class="toggle-row">
+            <div class="card-label">启用经期提醒</div>
+            <div class="toggle-switch" data-toggle role="switch" aria-checked="false" aria-label="启用经期提醒">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+          <div class="toggle-desc">开启后在临近日期由宠物发送温馨提醒</div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">提醒模式</div>
+          <div class="card-desc">选择使用方式以匹配合适的提醒逻辑</div>
+          <div class="radio-group" role="radiogroup" aria-label="经期提醒模式">
+            <div class="radio-option selected" data-radio="period-mode" role="radio" aria-checked="true">
+              <div class="radio-circle"><div class="radio-dot"></div></div>
+              我是女生
+            </div>
+            <div class="radio-option" data-radio="period-mode" role="radio" aria-checked="false">
+              <div class="radio-circle"><div class="radio-dot"></div></div>
+              伴侣提醒
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">周期设置</div>
+          <div class="card-desc">设置平均月经周期和经期持续天数</div>
+          <div class="dual-spinbox-row">
+            <div class="spinbox-group">
+              <label class="spinbox-label">周期天数</label>
+              <div class="spinbox-row">
+                <button class="spinbox-btn" aria-label="减少周期天数" onclick="adjustPeriodSpinbox('cycle',-1)">−</button>
+                <input class="spinbox-field" type="text" value="28" id="cycle-days" aria-label="周期天数" readonly>
+                <button class="spinbox-btn" aria-label="增加周期天数" onclick="adjustPeriodSpinbox('cycle',1)">+</button>
+              </div>
+              <span class="spinbox-hint">21 – 45 天</span>
+            </div>
+            <div class="spinbox-group">
+              <label class="spinbox-label">经期天数</label>
+              <div class="spinbox-row">
+                <button class="spinbox-btn" aria-label="减少经期天数" onclick="adjustPeriodSpinbox('period',-1)">−</button>
+                <input class="spinbox-field" type="text" value="5" id="period-days" aria-label="经期天数" readonly>
+                <button class="spinbox-btn" aria-label="增加经期天数" onclick="adjustPeriodSpinbox('period',1)">+</button>
+              </div>
+              <span class="spinbox-hint">2 – 10 天</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">上次经期日期</div>
+          <div class="card-desc">填写最近一次经期的起止日期 <span class="input-hint">(YYYY-MM-DD)</span></div>
+          <div class="dual-date-row">
+            <div class="date-group">
+              <label class="date-label">首日</label>
+              <input class="input-field" type="text" value="2025-01-08" id="last-start" aria-label="上次经期开始日期" placeholder="YYYY-MM-DD">
+            </div>
+            <div class="date-group">
+              <label class="date-label">结束日</label>
+              <input class="input-field" type="text" value="2025-01-12" id="last-end" aria-label="上次经期结束日期" placeholder="YYYY-MM-DD">
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-prediction">
+          <div class="card-label">预测结果</div>
+          <div class="prediction-value" id="pred-result">预计下次经期：2025-02-05（还有 20 天）</div>
+          <div class="prediction-detail">预计结束日期：2025-02-10</div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">校准调整</div>
+          <div class="card-desc">如果预测有偏差，可手动微调偏移天数</div>
+          <div class="calibration-row">
+            <span class="calibration-label">偏移天数：</span>
+            <span class="calibration-value" id="calib-value">0</span>
+            <div class="calibration-btns">
+              <button class="calib-btn" onclick="adjustCalibration(-1)">−1天</button>
+              <button class="calib-btn" onclick="adjustCalibration(1)">+1天</button>
+              <button class="calib-btn calib-btn-reset" onclick="adjustCalibration(0, true)">重置</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">历史记录（最近 3 次）</div>
+          <div class="history-list">
+            <div class="history-item">
+              <span class="history-date">2025-01-08 ~ 2025-01-12</span>
+              <span class="history-duration">5 天</span>
+            </div>
+            <div class="history-item">
+              <span class="history-date">2024-12-11 ~ 2024-12-15</span>
+              <span class="history-duration">5 天</span>
+            </div>
+            <div class="history-item">
+              <span class="history-date">2024-11-13 ~ 2024-11-17</span>
+              <span class="history-duration">5 天</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Button bar -->
+    <div class="button-bar" data-component="button-bar">
+      <button class="btn-cancel">取消</button>
+      <button class="btn-save">保存</button>
+    </div>
+  </div>
+</main>
+
+<script>
+(function() {
+  // Tab switching
+  const navItems = document.querySelectorAll('.nav-item');
+  const panels = document.querySelectorAll('.tab-panel');
+
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const tab = item.dataset.tab;
+      navItems.forEach(n => {
+        n.classList.remove('active');
+        n.setAttribute('aria-selected', 'false');
+      });
+      item.classList.add('active');
+      item.setAttribute('aria-selected', 'true');
+
+      panels.forEach(p => {
+        p.classList.remove('active');
+        p.style.opacity = '0';
+      });
+
+      const target = document.getElementById('panel-' + tab);
+      target.classList.add('active');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          target.style.opacity = '1';
+        });
+      });
+    });
+
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        item.click();
+      }
+    });
+  });
+
+  // Toggle switches
+  document.querySelectorAll('.toggle-switch').forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      toggle.classList.toggle('on');
+      const isOn = toggle.classList.contains('on');
+      toggle.setAttribute('aria-checked', isOn ? 'true' : 'false');
+    });
+  });
+
+  // Radio buttons
+  document.querySelectorAll('.radio-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const group = option.dataset.radio;
+      document.querySelectorAll(`.radio-option[data-radio="${group}"]`).forEach(o => {
+        o.classList.remove('selected');
+        o.setAttribute('aria-checked', 'false');
+      });
+      option.classList.add('selected');
+      option.setAttribute('aria-checked', 'true');
+    });
+  });
+
+  // Scale slider interaction
+  const track = document.getElementById('scale-track');
+  const fill = document.getElementById('scale-fill');
+  const thumb = document.getElementById('scale-thumb');
+  const valueDisplay = document.getElementById('scale-value');
+
+  let dragging = false;
+
+  function updateSlider(e) {
+    const rect = track.getBoundingClientRect();
+    let pct = (e.clientX - rect.left) / rect.width;
+    pct = Math.max(0, Math.min(1, pct));
+    const val = Math.round(25 + pct * 75);
+    const displayPct = ((val - 25) / 75) * 100;
+    fill.style.width = displayPct + '%';
+    thumb.style.left = displayPct + '%';
+    valueDisplay.textContent = val + '%';
+    thumb.setAttribute('aria-valuenow', val);
+  }
+
+  track.addEventListener('mousedown', (e) => {
+    dragging = true;
+    updateSlider(e);
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (dragging) updateSlider(e);
+  });
+
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+  });
+
+  // Spinbox for timeout
+  window.adjustSpinbox = function(delta) {
+    const input = document.getElementById('timeout-value');
+    let val = parseInt(input.value, 10) || 30;
+    val = Math.max(5, Math.min(120, val + delta));
+    input.value = val;
+  };
+
+  // Test connection simulation
+  window.testConnection = function() {
+    const result = document.getElementById('test-result');
+    result.className = 'test-result';
+    result.textContent = '正在连接...';
+    setTimeout(() => {
+      result.className = 'test-result success';
+      result.textContent = '连接成功！';
+    }, 1200);
+  };
+
+  // Theme selector
+  document.querySelectorAll('.theme-option').forEach(option => {
+    option.addEventListener('click', () => {
+      document.querySelectorAll('.theme-option').forEach(o => {
+        o.classList.remove('selected');
+        o.setAttribute('aria-checked', 'false');
+      });
+      option.classList.add('selected');
+      option.setAttribute('aria-checked', 'true');
+
+      const choice = option.dataset.themeChoice;
+      if (choice === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', choice);
+      }
+    });
+
+    option.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        option.click();
+      }
+    });
+  });
+
+  // Period tab: cycle/period days spinbox
+  window.adjustPeriodSpinbox = function(type, delta) {
+    const input = document.getElementById(type === 'cycle' ? 'cycle-days' : 'period-days');
+    let val = parseInt(input.value, 10);
+    if (type === 'cycle') {
+      val = Math.max(21, Math.min(45, val + delta));
+    } else {
+      val = Math.max(2, Math.min(10, val + delta));
+    }
+    input.value = val;
+  };
+
+  // Period tab: calibration adjustment
+  window.adjustCalibration = function(delta, reset) {
+    const label = document.getElementById('calib-value');
+    let val = parseInt(label.textContent, 10) || 0;
+    if (reset) {
+      val = 0;
+    } else {
+      val += delta;
+    }
+    label.textContent = val;
+  };
+})();
+</script>
+</body>
+</html>

@@ -51,16 +51,16 @@ EXT_CAT: Dict[str, str] = {
 
 
 CAT_META: Dict[str, tuple] = {
-    "截图": ("\U0001f4f8", "#ef4444"),
-    "图片": ("\U0001f5bc\ufe0f", "#8b5cf6"),
-    "视频": ("\U0001f3ac", "#ec4899"),
-    "音频": ("\U0001f3b5", "#f59e0b"),
-    "文档": ("\U0001f4c4", "#3b82f6"),
-    "压缩包": ("\U0001f4e6", "#06b6d4"),
-    "安装包": ("\U0001f4bf", "#6366f1"),
-    "代码": ("\U0001f4bb", "#10b981"),
-    "设计稿": ("\U0001f3a8", "#d946ef"),
-    "其他": ("\U0001f4c1", "#94a3b8"),
+    "截图": ("\U0001f4f8", "#F4845F"),
+    "图片": ("\U0001f5bc\ufe0f", "#B77DEE"),
+    "视频": ("\U0001f3ac", "#F8A6B2"),
+    "音频": ("\U0001f3b5", "#FBBF5C"),
+    "文档": ("\U0001f4c4", "#889DF0"),
+    "压缩包": ("\U0001f4e6", "#82D5BB"),
+    "安装包": ("\U0001f4bf", "#F4845F"),
+    "代码": ("\U0001f4bb", "#7EC8B8"),
+    "设计稿": ("\U0001f3a8", "#C4A1FF"),
+    "其他": ("\U0001f4c1", "#A8A4B8"),
 }
 
 
@@ -91,11 +91,11 @@ def _build_stat_cards(cats: Dict[str, Dict[str, Any]]) -> str:
 
     sc = []
     for cn, info in sorted(cats.items(), key=lambda x: -x[1]["count"]):
-        emoji, color = CAT_META.get(cn, ("\U0001f4c1", "#94a3b8"))
+        emoji, color = CAT_META.get(cn, ("\U0001f4c1", "#A8A4B8"))
         sc.append(
-            '        <div class="stat-card" data-cat="' + cn + '" style="border-left: 3px solid ' + color + '">'
-            '<div class="stat-icon">' + emoji + '</div>'
-            '<div class="stat-info">'
+            '        <div class="stat-card" data-cat="' + cn + '">'
+            '<div class="stat-icon" style="background:' + color + '22;color:' + color + '">' + emoji + '</div>'
+            '<div class="stat-info" style="display:flex;flex-direction:column;gap:2px">'
             '<div class="stat-name">' + cn + '</div>'
             '<div class="stat-detail">' + str(info["count"]) + ' 个文件 · ' + format_size(info["size"]) + '</div>'
             '</div></div>'
@@ -108,7 +108,7 @@ def _build_cat_options(cats: Dict[str, Dict[str, Any]]) -> str:
 
     co = []
     for cn, info in sorted(cats.items(), key=lambda x: -x[1]["count"]):
-        emoji, _ = CAT_META.get(cn, ("\U0001f4c1", "#94a3b8"))
+        emoji, _ = CAT_META.get(cn, ("\U0001f4c1", "#A8A4B8"))
         co.append('<option value="' + cn + '">' + emoji + ' ' + cn + ' (' + str(info["count"]) + ')</option>')
     return "".join(co)
 
@@ -124,7 +124,7 @@ def _build_rows(records: List[Dict[str, Any]]) -> str:
         action = rec.get("action", "")
         dest = rec.get("destination", "")
         sz = rec.get("file_size", 0)
-        emoji, color = CAT_META.get(cat, ("\U0001f4c1", "#94a3b8"))
+        emoji, color = CAT_META.get(cat, ("\U0001f4c1", "#A8A4B8"))
         badge_cls = "badge-recycle" if action == "recycle" else "badge-archive"
         badge_txt = "已回收" if action == "recycle" else "已归档"
         path_short = os.path.basename(dest) if dest and dest != "(已回收)" else "(已回收)"
@@ -171,71 +171,125 @@ def generate_html(records: List[Dict[str, Any]], archive_dir: str, archive_url: 
     rows_html = _build_rows(records)
 
     html = (
-        '<!DOCTYPE html>\n<html lang="zh-CN"><head>\n'
+        '<!DOCTYPE html>\n<html lang="zh-CN" data-theme="dark"><head>\n'
         '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">\n'
         '<title>妙喵桌宠 MeowDesk - 文件导航</title>\n'
+        '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+        '<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">\n'
         '<style>\n'
-        ':root{--bg:#0f1117;--bg2:#1a1d27;--bg3:#242837;--fg:#e2e8f0;--fg2:#94a3b8;--accent:#6366f1;--accent2:#818cf8;--border:#2d3348;--radius:12px}\n'
-        '*{margin:0;padding:0;box-sizing:border-box}\n'
-        'body{font-family:-apple-system,"Microsoft YaHei","Segoe UI",sans-serif;background:var(--bg);color:var(--fg);line-height:1.6;min-height:100vh}\n'
-        '.container{max-width:1200px;margin:0 auto;padding:32px 24px}\n'
-        '.header{text-align:center;margin-bottom:40px;padding:40px 0;background:linear-gradient(135deg,var(--bg2),var(--bg3));border-radius:var(--radius);border:1px solid var(--border)}\n'
-        '.header h1{font-size:32px;font-weight:700;background:linear-gradient(135deg,var(--accent),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}\n'
-        '.header p{color:var(--fg2);font-size:14px}\n'
-        '.summary{display:flex;gap:24px;margin-bottom:32px;flex-wrap:wrap}\n'
-        '.summary-card{flex:1;min-width:180px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center}\n'
-        '.summary-card .num{font-size:36px;font-weight:800;color:var(--accent2)}\n'
-        '.summary-card .label{color:var(--fg2);font-size:13px;margin-top:4px}\n'
-        '.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:32px}\n'
-        '.stat-card{display:flex;align-items:center;gap:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;transition:transform .15s,box-shadow .15s,opacity .15s;cursor:pointer}\n'
-        '.stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}\n'
-        '.stat-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 16px rgba(99,102,241,.2)}\n'
-        '.stat-card.dimmed{opacity:.4}\n'
-        '.stat-icon{font-size:28px}.stat-name{font-weight:600;font-size:15px}.stat-detail{color:var(--fg2);font-size:12px}\n'
-        '.toolbar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}\n'
-        '.toolbar input,.toolbar select{background:var(--bg2);border:1px solid var(--border);color:var(--fg);padding:10px 16px;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s}\n'
-        '.toolbar input:focus,.toolbar select:focus{border-color:var(--accent)}\n'
-        '.toolbar input{flex:1;min-width:200px}.toolbar select{min-width:160px;cursor:pointer}\n'
-        '.toolbar .btn{padding:10px 20px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-size:14px;font-weight:500;transition:background .2s}\n'
-        '.toolbar .btn:hover{background:var(--accent2)}\n'
-        '.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}\n'
-        'table{width:100%;border-collapse:collapse}\n'
-        'th{background:var(--bg3);padding:14px 16px;text-align:left;font-weight:600;font-size:13px;color:var(--fg2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}\n'
-        'td{padding:12px 16px;font-size:14px;border-bottom:1px solid var(--border);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n'
-        'tr:last-child td{border-bottom:none}tr:hover td{background:rgba(99,102,241,.06)}\n'
+        ':root{--bg-base:#121218;--bg-elevated:#1A1A24;--bg-card:#22222E;--bg-input:#2A2A38;'
+        '--primary:#F4845F;--primary-hover:#F69B7D;--secondary:#7EC8B8;--accent:#C4A1FF;'
+        '--text-primary:#F0EDE8;--text-secondary:#A8A4B8;--text-muted:#6B6880;'
+        '--danger:#F87171;--success:#6EE7A0;--warning:#FBBF5C;--border:#2D2D3D;--border-hover:#44445A;'
+        '--shadow-card:none;--header-grad-start:#1A1A24;--header-grad-end:#22222E;'
+        '--cat-purple:#B77DEE;--cat-pink:#F8A6B2;--cat-blue:#889DF0;--cat-coral:#F4845F;'
+        '--cat-mint:#7EC8B8;--cat-teal:#82D5BB;--cat-lavender:#C4A1FF;'
+        '--row-hover:rgba(244,132,95,0.05);--badge-archived-bg:rgba(110,231,160,0.12);'
+        '--badge-recycled-bg:rgba(248,113,113,0.12);--white:#FFFFFF;--font-display:"Nunito","Microsoft YaHei",sans-serif;'
+        '--font-body:"Noto Sans SC","Microsoft YaHei",-apple-system,sans-serif}\n'
+        '[data-theme="light"]{--bg-base:#FAF7F2;--bg-elevated:#F2EDE4;--bg-card:#FFFFFF;--bg-input:#F0EBE2;'
+        '--primary:#E06B45;--primary-hover:#D45A36;--secondary:#5BA896;--accent:#9B72CF;'
+        '--text-primary:#2D2A33;--text-secondary:#6B6578;--text-muted:#9C97AA;'
+        '--danger:#D94444;--success:#2DA35E;--warning:#C98E20;--border:#DDD8CF;--border-hover:#C4BFB6;'
+        '--shadow-card:0 2px 12px rgba(0,0,0,0.06);--header-grad-start:#F2EDE4;--header-grad-end:#FFFFFF;'
+        '--cat-purple:#9B5CC6;--cat-pink:#D4707E;--cat-blue:#5A6FCC;--cat-coral:#E06B45;'
+        '--cat-mint:#5BA896;--cat-teal:#4AA88A;--cat-lavender:#9B72CF;'
+        '--row-hover:rgba(224,107,69,0.04);--badge-archived-bg:rgba(45,163,94,0.1);'
+        '--badge-recycled-bg:rgba(217,68,68,0.08)}\n'
+        '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}\n'
+        'body{font-family:var(--font-body);font-size:14px;line-height:1.5;background:var(--bg-base);color:var(--text-primary);-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}\n'
+        '.page-wrapper{max-width:1200px;margin:0 auto;padding:24px 20px 40px}\n'
+        '.header{position:relative;background:linear-gradient(135deg,var(--header-grad-start),var(--header-grad-end));border-radius:14px;padding:40px;margin-bottom:24px;overflow:hidden;border:1px solid var(--border)}\n'
+        '.header-title{font-family:var(--font-display);font-size:32px;font-weight:700;letter-spacing:-.02em;color:var(--text-primary);margin-bottom:6px}\n'
+        '.header-subtitle{font-size:14px;color:var(--text-secondary);letter-spacing:.02em}\n'
+        '.header-ears{position:absolute;top:-1px;left:50px;display:flex;gap:12px}\n'
+        '.header-ear{width:28px;height:22px;background:var(--bg-card);clip-path:polygon(50% 0%,0% 100%,100% 100%);border-radius:2px}\n'
+        '.header-ear:nth-child(2){width:24px;height:19px;margin-top:3px}\n'
+        '.theme-toggle{position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--bg-base);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s ease;font-size:18px}\n'
+        '.theme-toggle:hover{border-color:var(--border-hover);color:var(--primary)}\n'
+        '.summary-cards{display:flex;gap:20px;margin-bottom:24px}\n'
+        '.summary-card{flex:1;background:var(--bg-card);border-radius:12px;padding:24px;border:1px solid var(--border);position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;box-shadow:var(--shadow-card)}\n'
+        '.summary-card::before{content:"";position:absolute;top:0;left:0;right:0;bottom:0;opacity:.05;border-radius:12px;pointer-events:none}\n'
+        '.summary-card[data-accent="coral"]::before{background:linear-gradient(135deg,var(--cat-coral),transparent 70%)}\n'
+        '.summary-card[data-accent="mint"]::before{background:linear-gradient(135deg,var(--cat-mint),transparent 70%)}\n'
+        '.summary-card[data-accent="lavender"]::before{background:linear-gradient(135deg,var(--cat-lavender),transparent 70%)}\n'
+        '.summary-card:hover{transform:translateY(-3px)}\n'
+        '.summary-label{font-size:13px;color:var(--text-secondary);margin-bottom:8px;letter-spacing:.02em}\n'
+        '.summary-value{font-family:var(--font-display);font-size:36px;font-weight:800;line-height:1.1}\n'
+        '.summary-value.coral{color:var(--primary)}.summary-value.mint{color:var(--secondary)}.summary-value.lavender{color:var(--accent)}\n'
+        '.summary-unit{font-size:13px;color:var(--text-muted);margin-top:4px}\n'
+        '.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:24px}\n'
+        '.stat-card{display:flex;align-items:center;gap:14px;background:var(--bg-card);border-radius:10px;padding:14px 16px;border:1px solid var(--border);cursor:pointer;transition:all .2s;box-shadow:var(--shadow-card)}\n'
+        '.stat-card:hover{transform:translateY(-2px)}.stat-card.active{border-width:2px}.stat-card.dimmed{opacity:.4}\n'
+        '.stat-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}\n'
+        '.stat-name{font-size:15px;font-weight:600;color:var(--text-primary)}\n'
+        '.stat-detail{font-size:12px;color:var(--text-muted);margin-top:2px}\n'
+        '.toolbar{display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap}\n'
+        '.toolbar input,.toolbar select{background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:10px 16px;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s;font-family:var(--font-body)}\n'
+        '.toolbar input{flex:1;min-width:200px}.toolbar input:focus,.toolbar select:focus{border-color:var(--primary)}\n'
+        '.toolbar input::placeholder{color:var(--text-muted)}\n'
+        '.toolbar select{min-width:160px;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:36px;'
+        'background-image:url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236B6880\' stroke-width=\'2\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E");'
+        'background-repeat:no-repeat;background-position:right 12px center}\n'
+        '.btn{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:var(--font-body);transition:all .2s;white-space:nowrap}\n'
+        '.btn-primary{background:var(--primary);color:var(--white)}.btn-primary:hover{background:var(--primary-hover)}\n'
+        '.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-secondary)}.btn-outline:hover{border-color:var(--border-hover);color:var(--text-primary)}\n'
+        '.table-wrap{background:var(--bg-card);border-radius:12px;overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-card)}\n'
+        'table{width:100%;border-collapse:collapse;min-width:780px}\n'
+        'thead th{background:var(--bg-elevated);padding:14px 16px;font-size:12px;font-weight:600;color:var(--text-secondary);text-align:left;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}\n'
+        'tbody td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:14px;color:var(--text-primary);vertical-align:middle}\n'
+        'tbody tr{transition:background .15s}tbody tr:hover{background:var(--row-hover)}tbody tr:last-child td{border-bottom:none}\n'
         '.cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}\n'
-        '.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600}\n'
-        '.badge-archive{background:rgba(16,185,129,.15);color:#34d399}.badge-recycle{background:rgba(239,68,68,.15);color:#f87171}\n'
-        '.btn-locate{color:var(--accent2);text-decoration:none;margin-left:6px;padding:2px 8px;border:1px solid var(--accent);border-radius:4px;font-size:11px;cursor:pointer;transition:background .2s,color .2s}\n'
-        '.btn-locate:hover{background:var(--accent);color:#fff}\n'
-        '.path-cell{color:var(--fg2);font-size:12px}\n'
+        '.cell-filename{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n'
+        '.cell-date,.cell-size{color:var(--text-secondary);font-size:13px;white-space:nowrap}\n'
+        '.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.02em}\n'
+        '.badge-archive{background:var(--badge-archived-bg);color:var(--success)}.badge-recycle{background:var(--badge-recycled-bg);color:var(--danger)}\n'
+        '.btn-locate{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;border:1px solid var(--primary);background:transparent;color:var(--primary);font-size:12px;cursor:pointer;transition:all .2s;font-family:var(--font-body);text-decoration:none;margin-left:6px}\n'
+        '.btn-locate:hover{background:var(--primary);color:var(--white)}\n'
+        '.path-cell{font-size:12px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n'
         '.load-more{text-align:center;padding:20px}\n'
-        '.footer{text-align:center;margin-top:48px;padding:24px 0;color:var(--fg2);font-size:12px;border-top:1px solid var(--border)}\n'
-        '@media(max-width:768px){.summary{flex-direction:column}.stats-grid{grid-template-columns:1fr}.toolbar{flex-direction:column}.toolbar input,.toolbar select{width:100%}th,td{padding:10px 12px;font-size:13px}}\n'
-        '</style></head><body>\n<div class="container">\n'
-        '<div class="header"><h1>妙喵桌宠 MeowDesk</h1><p>智能文件分类归档 · 拖拽即整理</p></div>\n'
-        '<div class="summary">'
-        '<div class="summary-card"><div class="num">' + str(len(records)) + '</div><div class="label">累计处理文件</div></div>'
-        '<div class="summary-card"><div class="num">' + str(len(cats)) + '</div><div class="label">文件分类数</div></div>'
-        '<div class="summary-card"><div class="num">' + format_size(total_size) + '</div><div class="label">归档总大小</div></div>'
+        '.footer{text-align:center;padding:20px 0;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border)}\n'
+        '.footer a{color:var(--text-muted);text-decoration:none;margin-left:12px;transition:color .2s}.footer a:hover{color:var(--primary)}\n'
+        'html.theme-transitioning,html.theme-transitioning *,html.theme-transitioning *::before,html.theme-transitioning *::after{transition:background-color .35s ease,color .35s ease,border-color .35s ease,box-shadow .35s ease !important}\n'
+        '@media(max-width:768px){.summary-cards{flex-direction:column}.stats-grid{grid-template-columns:1fr}.toolbar{flex-direction:column}.toolbar input,.toolbar select,.btn{width:100%;min-width:unset}.header{padding:28px 20px}.header-title{font-size:24px}}\n'
+        '::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--border-hover)}\n'
+        '</style></head><body>\n'
+        '<main class="page-wrapper">\n'
+        '<div class="header">\n'
+        '  <div class="header-ears"><div class="header-ear"></div><div class="header-ear"></div></div>\n'
+        '  <div class="header-title">妙喵桌宠 MeowDesk</div>\n'
+        '  <div class="header-subtitle">智能文件分类归档 · 拖拽即整理</div>\n'
+        '  <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换主题">\n'
+        '    <span class="icon-moon">🌙</span><span class="icon-sun" style="display:none">☀️</span>\n'
+        '  </button>\n'
+        '</div>\n'
+        '<div class="summary-cards">\n'
+        '  <div class="summary-card" data-accent="coral"><div class="summary-label">累计处理</div><div class="summary-value coral">' + str(len(records)) + '</div><div class="summary-unit">个文件</div></div>\n'
+        '  <div class="summary-card" data-accent="mint"><div class="summary-label">文件分类</div><div class="summary-value mint">' + str(len(cats)) + '</div><div class="summary-unit">个类别</div></div>\n'
+        '  <div class="summary-card" data-accent="lavender"><div class="summary-label">归档总大小</div><div class="summary-value lavender">' + format_size(total_size) + '</div><div class="summary-unit">存储空间</div></div>\n'
         '</div>\n'
         '<div class="stats-grid">\n' + stat_cards + '\n</div>\n'
-        '<div class="toolbar">'
-        '<input type="text" id="search" placeholder="搜索文件名..." oninput="filterTable()">'
-        '<select id="catFilter" onchange="filterTable()"><option value="全部">全部分类</option>' + cat_options + '</select>'
-        '<button class="btn" onclick="location.reload()">刷新</button>'
-        '<button class="btn" style="background:transparent;border-color:var(--border);color:var(--fg2)" onclick="openArchiveDir()">打开归档目录</button>'
+        '<div class="toolbar">\n'
+        '  <input type="text" id="search" placeholder="搜索文件名..." oninput="filterTable()">\n'
+        '  <select id="catFilter" onchange="filterTable()"><option value="全部">全部分类</option>' + cat_options + '</select>\n'
+        '  <button class="btn btn-primary" onclick="location.reload()">刷新</button>\n'
+        '  <button class="btn btn-outline" onclick="openArchiveDir()">打开归档目录</button>\n'
         '</div>\n'
         '<div class="table-wrap"><table><thead><tr>'
-        '<th>分类</th><th>文件名</th><th>日期</th><th>大小</th><th>操作</th><th>归档路径</th>'
+        '<th>分类</th><th>文件名</th><th>日期</th><th>大小</th><th>状态</th><th>归档路径</th>'
         '</tr></thead><tbody id="fileBody">' + rows_html + '</tbody></table></div>\n'
         '<div id="loadMoreWrap" class="load-more" style="display:none">'
-        '<button class="btn" onclick="showMore()">加载更多</button>'
+        '<button class="btn btn-outline" onclick="showMore()" style="border-color:var(--primary);color:var(--primary)">加载更多</button>'
         '</div>\n'
-        '<div class="footer">妙喵桌宠 MeowDesk · 共' + str(len(records)) + '个文件 · 数据存储于本地 ' + archive_dir + '</div>\n' + '        <div class="footer" style="margin-top:4px;font-size:12px;color:#64748b">'
-        '        <a href="https://github.com/ra1nzzz/MeowDesk" target="_blank">GitHub 仓库</a>'
-        '        · 问题反馈 · 欢迎 Star ✨</div>\n'
+        '<div class="footer">妙喵桌宠 MeowDesk · 共 ' + str(len(records)) + ' 个文件'
+        '<a href="https://github.com/ra1nzzz/MeowDesk" target="_blank" rel="noopener">GitHub</a></div>\n'
+        '</main>\n'
         '<script>\n'
+        'function toggleTheme(){var h=document.documentElement,c=h.getAttribute("data-theme"),n=c==="dark"?"light":"dark";'
+        'h.classList.add("theme-transitioning");void h.offsetHeight;h.setAttribute("data-theme",n);'
+        'var m=h.querySelector(".icon-moon"),s=h.querySelector(".icon-sun");'
+        'if(n==="light"){m.style.display="none";s.style.display="inline"}else{m.style.display="inline";s.style.display="none"}'
+        'setTimeout(function(){h.classList.remove("theme-transitioning")},400)}\n'
         'var PS=' + str(page_size) + ',vc=0,ar=[];\n'
         'function doFilter(catVal){\n'
         '  var kw=document.getElementById("search").value.toLowerCase();\n'

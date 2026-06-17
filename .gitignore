@@ -1,11 +1,34 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.log
-logs/
-*.egg-info/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
 dist/
 build/
-.eggs/
-*.spec
-.env
+*.egg-info/
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec.bak
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# QoderWork workspace
+.design.json
+*.design.json

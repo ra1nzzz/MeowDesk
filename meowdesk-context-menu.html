@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeowDesk - Context Menu Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Backgrounds */
+    --bg-base: #121218;
+    --bg-elevated: #1A1A24;
+    --bg-card: #22222E;
+    --bg-input: #2A2A38;
+
+    /* Primary (coral) */
+    --primary: #F4845F;
+    --primary-hover: #F69B7D;
+
+    /* Secondary (mint) */
+    --secondary: #7EC8B8;
+    --secondary-hover: #96D5C8;
+
+    /* Accent (lavender) */
+    --accent: #C4A1FF;
+
+    /* Text */
+    --text-primary: #F0EDE8;
+    --text-secondary: #A8A4B8;
+    --text-muted: #6B6880;
+
+    /* Semantic */
+    --danger: #F87171;
+    --success: #6EE7A0;
+    --warning: #FBBF5C;
+
+    /* Border */
+    --border: #2D2D3D;
+    --border-hover: #44445A;
+
+    /* Menu specifics */
+    --menu-bg: rgba(26, 26, 36, 0.92);
+    --menu-width: 220px;
+    --menu-radius: 12px;
+    --menu-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --item-height: 40px;
+    --item-padding: 12px 16px;
+    --item-gap: 12px;
+    --icon-size: 18px;
+    --hover-bg: rgba(244, 132, 95, 0.12);
+    --danger-hover-bg: rgba(248, 113, 113, 0.1);
+    --separator-color: rgba(45, 45, 61, 0.8);
+    --transition-speed: 200ms;
+
+    /* Desktop background */
+    --desk-bg-start: #1a1a2e;
+    --desk-bg-end: #16213e;
+    --star-dot: rgba(255, 255, 255, 0.2);
+    --taskbar-bg: rgba(18, 18, 24, 0.85);
+    --taskbar-border: rgba(45, 45, 61, 0.5);
+    --badge-bg: rgba(26, 26, 36, 0.7);
+    --hover-white: rgba(255, 255, 255, 0.06);
+
+    /* Cat illustration */
+    --cat-body: #F4845F;
+    --cat-body-light: #F69B7D;
+    --cat-detail: #E8A87C;
+    --cat-ear-inner: #C4A1FF;
+    --cat-eye: #22222E;
+    --cat-eye-shine: #F0EDE8;
+    --cat-nose: #C4A1FF;
+    --cat-mouth: #22222E;
+    --cat-shadow: rgba(0, 0, 0, 0.25);
+    --danger-hover: #FCA5A5;
+  }
+
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Noto Sans SC', 'Microsoft YaHei', -apple-system, sans-serif;
+    background: linear-gradient(135deg, var(--desk-bg-start) 0%, var(--desk-bg-end) 100%);
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+    color: var(--text-primary);
+  }
+
+  /* Starfield background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.25) 0%, transparent 100%),
+      radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.15) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.12) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 85% 55%, rgba(255,255,255,0.22) 0%, transparent 100%),
+      radial-gradient(1px 1px at 15% 65%, rgba(255,255,255,0.18) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 80%, rgba(255,255,255,0.14) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 50% 70%, rgba(255,255,255,0.26) 0%, transparent 100%),
+      radial-gradient(1px 1px at 65% 85%, rgba(255,255,255,0.16) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 75%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 92% 30%, rgba(255,255,255,0.18) 0%, transparent 100%),
+      radial-gradient(1px 1px at 5% 90%, rgba(255,255,255,0.15) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 45% 92%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 50%, rgba(255,255,255,0.12) 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 48%, rgba(255,255,255,0.17) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 30%, rgba(255,255,255,0.13) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 88% 88%, rgba(255,255,255,0.24) 0%, transparent 100%),
+      radial-gradient(1px 1px at 35% 55%, rgba(255,255,255,0.11) 0%, transparent 100%),
+      radial-gradient(1px 1px at 95% 12%, rgba(255,255,255,0.19) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Layout container */
+  .prototype-stage {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 40px;
+    padding: 40px;
+  }
+
+  /* ====== CONTEXT MENU ====== */
+  .context-menu-wrapper {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .context-menu {
+    width: var(--menu-width);
+    background: var(--menu-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--menu-radius);
+    box-shadow: var(--menu-shadow);
+    padding: 6px 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .menu-separator {
+    height: 1px;
+    margin: 6px 12px;
+    background: var(--separator-color);
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    height: var(--item-height);
+    padding: var(--item-padding);
+    gap: var(--item-gap);
+    cursor: pointer;
+    transition: background var(--transition-speed) ease;
+    position: relative;
+    user-select: none;
+  }
+
+  .menu-item:hover {
+    background: var(--hover-bg);
+  }
+
+  .menu-item:hover .menu-icon {
+    color: var(--primary);
+  }
+
+  .menu-item:hover .menu-label {
+    color: var(--text-primary);
+  }
+
+  .menu-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    transition: color var(--transition-speed) ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .menu-icon svg {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .menu-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+    line-height: 1;
+    flex: 1;
+    white-space: nowrap;
+  }
+
+  /* Submenu trigger */
+  .menu-item--submenu {
+    position: relative;
+  }
+
+  .menu-item--submenu .submenu-arrow {
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+    transition: color var(--transition-speed) ease, transform var(--transition-speed) ease;
+    flex-shrink: 0;
+  }
+
+  .menu-item--submenu .submenu-arrow svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .menu-item--submenu:hover .submenu-arrow {
+    color: var(--primary);
+  }
+
+  /* Active indicator for expanded submenu */
+  .menu-item--submenu.is-expanded::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    background: var(--primary);
+    border-radius: 0 3px 3px 0;
+  }
+
+  .menu-item--submenu.is-expanded .menu-icon {
+    color: var(--primary);
+  }
+
+  .menu-item--submenu.is-expanded .menu-label {
+    color: var(--primary-hover);
+  }
+
+  .menu-item--submenu.is-expanded .submenu-arrow {
+    color: var(--primary);
+  }
+
+  /* Submenu panel */
+  .submenu-panel {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 0;
+    width: var(--menu-width);
+    background: var(--menu-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--menu-radius);
+    box-shadow: var(--menu-shadow);
+    padding: 6px 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    pointer-events: none;
+    transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+    z-index: 9;
+  }
+
+  .submenu-panel.is-visible {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  /* Danger / Exit item */
+  .menu-item--danger:hover {
+    background: var(--danger-hover-bg);
+  }
+
+  .menu-item--danger .menu-label {
+    color: var(--danger);
+  }
+
+  .menu-item--danger .menu-icon {
+    color: var(--danger);
+  }
+
+  .menu-item--danger:hover .menu-icon {
+    color: var(--danger-hover);
+  }
+
+  .menu-item--danger:hover .menu-label {
+    color: var(--danger-hover);
+  }
+
+  /* ====== CAT PET IMAGE ====== */
+  .pet-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pet-avatar {
+    width: 140px;
+    height: 140px;
+    object-fit: contain;
+    border-radius: 16px;
+    mix-blend-mode: multiply;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+    transition: transform 300ms ease;
+  }
+
+  .pet-avatar:hover {
+    transform: scale(1.05);
+  }
+
+  html[data-theme="light"] .pet-avatar {
+    mix-blend-mode: normal;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.12));
+  }
+
+  .pet-label {
+    font-family: 'Nunito', 'Microsoft YaHei', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+
+  .pet-label span {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+
+  /* ====== Subtle taskbar hint ====== */
+  .taskbar-hint {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    background: var(--taskbar-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--taskbar-border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    z-index: 2;
+  }
+
+  .taskbar-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: color 200ms ease, background 200ms ease;
+    cursor: pointer;
+  }
+
+  .taskbar-icon:hover {
+    background: var(--hover-white);
+    color: var(--text-secondary);
+  }
+
+  .taskbar-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .taskbar-spacer { flex: 1; }
+
+  .taskbar-clock {
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+
+  /* ====== Design annotation ====== */
+  .design-badge {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Nunito', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--badge-bg);
+    backdrop-filter: blur(12px);
+    padding: 6px 18px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    z-index: 20;
+  }
+
+  /* Theme toggle button */
+  .theme-toggle-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--badge-bg);
+    backdrop-filter: blur(12px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    z-index: 20;
+    transition: background 200ms, color 200ms, border-color 200ms;
+  }
+  .theme-toggle-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  .theme-toggle-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .theme-toggle-btn .icon-sun { display: none; }
+  html[data-theme="light"] .theme-toggle-btn .icon-moon { display: none; }
+  html[data-theme="light"] .theme-toggle-btn .icon-sun { display: block; }
+
+  /* ===== Light Theme ===== */
+  html[data-theme="light"] {
+    --bg-base: #FAF7F2;
+    --bg-elevated: #F2EDE4;
+    --bg-card: #FFFFFF;
+    --bg-input: #F0EBE2;
+
+    --primary: #E06B45;
+    --primary-hover: #D45A36;
+    --secondary: #5BA896;
+    --secondary-hover: #4A9785;
+    --accent: #9B72CF;
+
+    --text-primary: #2D2A33;
+    --text-secondary: #6B6578;
+    --text-muted: #9C97AA;
+
+    --danger: #D94444;
+    --success: #2DA35E;
+    --warning: #C98E20;
+
+    --border: #DDD8CF;
+    --border-hover: #C4BFB6;
+
+    --menu-bg: rgba(255, 255, 255, 0.88);
+    --menu-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    --hover-bg: rgba(224, 107, 69, 0.08);
+    --danger-hover-bg: rgba(217, 68, 68, 0.06);
+    --separator-color: rgba(221, 216, 207, 0.8);
+    --hover-white: rgba(0, 0, 0, 0.04);
+
+    --desk-bg-start: #F5F0E8;
+    --desk-bg-end: #EBE4D8;
+    --star-dot: rgba(0, 0, 0, 0.04);
+    --taskbar-bg: rgba(250, 247, 242, 0.88);
+    --taskbar-border: rgba(221, 216, 207, 0.5);
+    --badge-bg: rgba(250, 247, 242, 0.75);
+
+    --cat-body: #E06B45;
+    --cat-body-light: #EA8D6E;
+    --cat-detail: #D4A088;
+    --cat-ear-inner: #9B72CF;
+    --cat-eye: #2D2A33;
+    --cat-eye-shine: #FAF7F2;
+    --cat-nose: #9B72CF;
+    --cat-mouth: #2D2A33;
+    --cat-shadow: rgba(0, 0, 0, 0.1);
+    --danger-hover: #B33636;
+  }
+
+  /* Light theme desktop background — subtle dots instead of stars */
+  html[data-theme="light"] body::before {
+    background-image:
+      radial-gradient(2px 2px at 12% 18%, rgba(0,0,0,0.04) 0%, transparent 100%),
+      radial-gradient(2px 2px at 28% 42%, rgba(0,0,0,0.03) 0%, transparent 100%),
+      radial-gradient(3px 3px at 45% 15%, rgba(0,0,0,0.035) 0%, transparent 100%),
+      radial-gradient(2px 2px at 60% 50%, rgba(0,0,0,0.025) 0%, transparent 100%),
+      radial-gradient(2px 2px at 75% 25%, rgba(0,0,0,0.03) 0%, transparent 100%),
+      radial-gradient(3px 3px at 88% 60%, rgba(0,0,0,0.03) 0%, transparent 100%),
+      radial-gradient(2px 2px at 18% 72%, rgba(0,0,0,0.025) 0%, transparent 100%),
+      radial-gradient(2px 2px at 35% 85%, rgba(0,0,0,0.02) 0%, transparent 100%),
+      radial-gradient(3px 3px at 55% 75%, rgba(0,0,0,0.03) 0%, transparent 100%),
+      radial-gradient(2px 2px at 70% 90%, rgba(0,0,0,0.02) 0%, transparent 100%);
+  }
+</style>
+</head>
+<body>
+<main>
+
+<div class="design-badge" data-component="badge">MeowDesk Context Menu &mdash; Redesign Prototype</div>
+
+<button class="theme-toggle-btn" id="theme-toggle" aria-label="切换色彩模式">
+  <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+</button>
+
+<div class="prototype-stage" data-component="stage">
+
+  <!-- Context Menu -->
+  <div class="context-menu-wrapper" data-component="context-menu-wrapper">
+    <nav class="context-menu" data-component="context-menu" role="menu" aria-label="MeowDesk 右键菜单">
+
+      <!-- Primary group -->
+      <div class="menu-item" data-component="menu-item" role="menuitem">
+        <span class="menu-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/><path d="M12 8l2 4-2 4-2-4z" fill="currentColor" stroke="none" opacity="0.3"/><path d="M12 8l2 4-2 4-2-4z"/></svg>
+        </span>
+        <span class="menu-label">打开导航页</span>
+      </div>
+
+      <div class="menu-item" data-component="menu-item" role="menuitem">
+        <span class="menu-icon">
+          <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        </span>
+        <span class="menu-label">打开归档目录</span>
+      </div>
+
+      <div class="menu-item" data-component="menu-item" role="menuitem">
+        <span class="menu-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        </span>
+        <span class="menu-label">自由对话</span>
+      </div>
+
+      <div class="menu-separator" data-component="separator" role="separator"></div>
+
+      <!-- AI Toolbox submenu trigger -->
+      <div class="menu-item menu-item--submenu is-expanded" data-component="menu-item-submenu" role="menuitem" aria-haspopup="true" aria-expanded="true" id="submenu-trigger">
+        <span class="menu-icon">
+          <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </span>
+        <span class="menu-label">AI 工具箱</span>
+        <span class="submenu-arrow">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </span>
+      </div>
+
+      <!-- Submenu panel (expanded by default) -->
+      <div class="submenu-panel is-visible" data-component="submenu-panel" role="menu" aria-label="AI 工具箱">
+        <div class="menu-item" data-component="menu-item" role="menuitem">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/><path d="M3 21h18"/><path d="M8 17l-2 4"/><path d="M16 17l2 4"/><line x1="7" y1="3" x2="7" y2="6"/><line x1="17" y1="3" x2="17" y2="6"/></svg>
+          </span>
+          <span class="menu-label">清理磁盘</span>
+        </div>
+
+        <div class="menu-item" data-component="menu-item" role="menuitem">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 10h2"/><path d="M15 10h2"/><path d="M7 7h10"/></svg>
+          </span>
+          <span class="menu-label">系统信息</span>
+        </div>
+
+        <div class="menu-item" data-component="menu-item" role="menuitem">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>
+          </span>
+          <span class="menu-label">查看日期</span>
+        </div>
+
+        <div class="menu-item" data-component="menu-item" role="menuitem">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24"><path d="M5.8 11.3L2 22l10.7-3.8"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="M22 2L12 12"/><path d="M16 8l-4-4"/><path d="M9 3L7.5 4.5"/><path d="M20 13l1.5-1.5"/></svg>
+          </span>
+          <span class="menu-label">假期提醒</span>
+        </div>
+
+        <div class="menu-item" data-component="menu-item" role="menuitem">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </span>
+          <span class="menu-label">经期提醒</span>
+        </div>
+      </div>
+
+      <div class="menu-separator" data-component="separator" role="separator"></div>
+
+      <div class="menu-item" data-component="menu-item" role="menuitem">
+        <span class="menu-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </span>
+        <span class="menu-label">设置</span>
+      </div>
+
+      <div class="menu-item" data-component="menu-item" role="menuitem">
+        <span class="menu-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        </span>
+        <span class="menu-label">关于</span>
+      </div>
+
+      <div class="menu-separator" data-component="separator" role="separator"></div>
+
+      <div class="menu-item menu-item--danger" data-component="menu-item" role="menuitem">
+        <span class="menu-icon">
+          <svg viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/></svg>
+        </span>
+        <span class="menu-label">退出</span>
+      </div>
+
+    </nav>
+  </div>
+
+  <!-- Cat Pet -->
+  <div class="pet-container" data-component="pet">
+    <img src="asset/cat.png" alt="妙喵桌宠" class="pet-avatar" data-component="pet-avatar">
+    <div class="pet-label">妙喵桌宠<span>MeowDesk</span></div>
+  </div>
+
+</div>
+
+<!-- Taskbar hint -->
+<div class="taskbar-hint" data-component="taskbar">
+  <div class="taskbar-icon">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  </div>
+  <div class="taskbar-icon">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </div>
+  <div class="taskbar-spacer"></div>
+  <div class="taskbar-icon">
+    <svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+  </div>
+  <div class="taskbar-icon">
+    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+  </div>
+  <div class="taskbar-clock">21:37</div>
+</div>
+
+</main>
+
+<script>
+  // Interactive submenu toggle (starts expanded for design review)
+  const trigger = document.getElementById('submenu-trigger');
+  const panel = document.querySelector('.submenu-panel');
+
+  // The submenu starts expanded via CSS classes.
+  // Clicking toggles it for interaction demo.
+  trigger.addEventListener('click', function() {
+    const isExpanded = trigger.classList.contains('is-expanded');
+    if (isExpanded) {
+      trigger.classList.remove('is-expanded');
+      trigger.setAttribute('aria-expanded', 'false');
+      panel.classList.remove('is-visible');
+    } else {
+      trigger.classList.add('is-expanded');
+      trigger.setAttribute('aria-expanded', 'true');
+      panel.classList.add('is-visible');
+    }
+  });
+
+  // Hover behavior: re-expand on hover when collapsed
+  trigger.addEventListener('mouseenter', function() {
+    if (!trigger.classList.contains('is-expanded')) {
+      trigger.classList.add('is-expanded');
+      trigger.setAttribute('aria-expanded', 'true');
+      panel.classList.add('is-visible');
+    }
+  });
+
+  // Theme toggle
+  document.getElementById('theme-toggle').addEventListener('click', function() {
+    const current = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+  });
+</script>
+
+</body>
+</html>

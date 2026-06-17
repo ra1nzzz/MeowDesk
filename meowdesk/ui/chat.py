@@ -7,26 +7,27 @@ from typing import Dict, Any, List
 from datetime import datetime
 import threading
 
-# 从 settings 导入颜色配置，避免重复定义
+# 从 settings 导入颜色配置
 try:
-    from .settings import SettingsPanel
-    COLORS = SettingsPanel.COLORS
+    from .settings import SettingsPanel, resolve_colors, DARK_COLORS
 except ImportError:
-    COLORS = {
-        'bg': '#1a1d27',
-        'fg': '#e2e8f0',
-        'entry_bg': '#242837',
-        'accent': '#6366f1',
-        'border': '#374151',
+    DARK_COLORS = {
+        'bg': '#121218',
+        'fg': '#F0EDE8',
+        'entry_bg': '#22222E',
+        'accent': '#F4845F',
+        'border': '#2D2D3D',
     }
+    def resolve_colors(mode):
+        return dict(DARK_COLORS)
 
-# 消息颜色
+# 消息颜色 — 暖珊瑚色主题
 MSG_COLORS = {
-    'user_msg': '#3b82f6',
-    'ai_msg': '#22c55e',
-    'system_msg': '#f59e0b',
-    'error_msg': '#ef4444',
-    'timestamp': '#6b7280',
+    'user_msg': '#F4845F',
+    'ai_msg': '#6EE7A0',
+    'system_msg': '#FBBF5C',
+    'error_msg': '#F87171',
+    'timestamp': '#6B6880',
 }
 
 # 跨平台字体
@@ -60,11 +61,19 @@ class ChatWindow:
         self.session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.messages: List[Dict] = []
         self._is_sending = False
-        
+
+        # Resolve theme from config
+        color_mode = "dark"
+        try:
+            color_mode = getattr(config.config, 'color_mode', 'dark')
+        except Exception:
+            pass
+        self.COLORS = resolve_colors(color_mode)
+
         # 创建窗口
         self.window = self.tk.Toplevel(parent)
         self.window.title("AI 助手 - MeowDesk")
-        self.window.configure(bg=COLORS['bg'])
+        self.window.configure(bg=self.COLORS['bg'])
         self.window.resizable(True, True)
         
         # 居中显示
@@ -84,28 +93,28 @@ class ChatWindow:
     def _create_ui(self):
         """创建界面"""
         # 顶部工具栏
-        toolbar = self.tk.Frame(self.window, bg=COLORS['border'], height=40)
+        toolbar = self.tk.Frame(self.window, bg=self.COLORS['border'], height=40)
         toolbar.pack(fill='x')
         toolbar.pack_propagate(False)
         
         self.tk.Label(
             toolbar, text=f"会话: {self.session_id}",
-            bg=COLORS['border'], fg=COLORS['fg'],
+            bg=self.COLORS['border'], fg=self.COLORS['fg'],
             font=(FONT_FAMILY, 9)
         ).pack(side='left', padx=10)
         
         self.tk.Button(
-            toolbar, text="清空对话", bg=COLORS['border'], fg=COLORS['fg'],
+            toolbar, text="清空对话", bg=self.COLORS['border'], fg=self.COLORS['fg'],
             relief="flat", cursor="hand2", padx=8, pady=2,
             command=self._clear_chat
         ).pack(side='right', padx=10)
         
         # 消息显示区域
-        msg_frame = self.tk.Frame(self.window, bg=COLORS['bg'])
+        msg_frame = self.tk.Frame(self.window, bg=self.COLORS['bg'])
         msg_frame.pack(fill='both', expand=True, padx=10, pady=(10, 0))
         
         self.msg_text = self.tk.Text(
-            msg_frame, bg=COLORS['bg'], fg=COLORS['fg'],
+            msg_frame, bg=self.COLORS['bg'], fg=self.COLORS['fg'],
             font=(FONT_FAMILY, 10), wrap='word', state='disabled',
             relief="flat", padx=10, pady=10
         )
@@ -121,24 +130,24 @@ class ChatWindow:
             self.msg_text.tag_configure(tag, foreground=color, font=font)
         
         # 快捷命令区域
-        cmd_frame = self.tk.Frame(self.window, bg=COLORS['bg'])
+        cmd_frame = self.tk.Frame(self.window, bg=self.COLORS['bg'])
         cmd_frame.pack(fill='x', padx=10, pady=(5, 0))
         
         for label, cmd in [("清理磁盘", "帮我清理临时文件"),
                            ("系统信息", "显示系统信息"),
                            ("日期查询", "今天是什么日期？")]:
             self.tk.Button(
-                cmd_frame, text=label, bg=COLORS['entry_bg'], fg=COLORS['fg'],
+                cmd_frame, text=label, bg=self.COLORS['entry_bg'], fg=self.COLORS['fg'],
                 relief="flat", cursor="hand2", padx=8, pady=2,
                 command=lambda c=cmd: self._send_quick_command(c)
             ).pack(side='left', padx=(0, 5))
         
         # 输入区域
-        input_frame = self.tk.Frame(self.window, bg=COLORS['border'])
+        input_frame = self.tk.Frame(self.window, bg=self.COLORS['border'])
         input_frame.pack(fill='x', padx=10, pady=10)
 
         self.input_text = self.tk.Text(
-            input_frame, bg=COLORS['entry_bg'], fg=COLORS['fg'],
+            input_frame, bg=self.COLORS['entry_bg'], fg=self.COLORS['fg'],
             font=(FONT_FAMILY, 11), height=5, relief="flat", padx=12, pady=10,
             wrap='word'
         )
@@ -146,14 +155,14 @@ class ChatWindow:
         self.input_text.bind('<Return>', self._on_enter)
         
         self.tk.Button(
-            input_frame, text="发送", bg=COLORS['accent'], fg="#ffffff",
+            input_frame, text="发送", bg=self.COLORS['accent'], fg="#ffffff",
             relief="flat", cursor="hand2", padx=20, pady=12,
             font=(FONT_FAMILY, 11, "bold"), command=self._send_message
         ).pack(side='right', padx=(8, 0))
         
         # 状态栏
         self.status_label = self.tk.Label(
-            self.window, text="就绪", bg=COLORS['bg'],
+            self.window, text="就绪", bg=self.COLORS['bg'],
             fg=MSG_COLORS['timestamp'], font=(FONT_FAMILY, 8)
         )
         self.status_label.pack(anchor='w', padx=15, pady=(0, 5))
