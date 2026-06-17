@@ -145,6 +145,77 @@ def _build_rows(records: List[Dict[str, Any]]) -> str:
     return "\n".join(rows)
 
 
+def _build_timeline(records: List[Dict[str, Any]]) -> str:
+    """Build the 7-day archive trend SVG chart HTML."""
+
+    from datetime import datetime, timedelta
+
+    today = datetime.now().date()
+    days = [(today - timedelta(days=6 - i)) for i in range(7)]
+
+    counts = {}
+    for rec in records:
+        d = rec.get("date", "")
+        if d:
+            counts[d] = counts.get(d, 0) + 1
+
+    values = [counts.get(d.isoformat(), 0) for d in days]
+    max_val = max(values) if values else 1
+    if max_val == 0:
+        max_val = 1
+
+    chart_w = 700
+    chart_h = 80
+    pad_x = 50
+    step_x = (chart_w - 2 * pad_x) / 6 if len(values) > 1 else 0
+
+    points = []
+    for i, v in enumerate(values):
+        x = pad_x + i * step_x
+        y = chart_h - 6 - (v / max_val) * (chart_h - 16)
+        points.append((x, y))
+
+    pts_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in points)
+    area_d = (
+        f"M{points[0][0]:.1f},{points[0][1]:.1f} "
+        + " ".join(f"L{x:.1f},{y:.1f}" for x, y in points[1:])
+        + f" L{points[-1][0]:.1f},{chart_h} L{points[0][0]:.1f},{chart_h} Z"
+    )
+
+    grid = "".join(
+        f'<line x1="0" y1="{yy}" x2="{chart_w}" y2="{yy}" '
+        f'stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4,4"/>'
+        for yy in (20, 40, 60)
+    )
+    dots = "".join(
+        f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="var(--primary)"/>'
+        for x, y in points
+    )
+
+    day_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    labels = "".join(
+        f'<span class="chart-label">{days[i].month}/{days[i].day} '
+        f'{day_names[days[i].weekday()]}</span>'
+        for i in range(7)
+    )
+
+    return (
+        '<div class="timeline">\n'
+        '  <div class="timeline-title">最近 7 天归档趋势</div>\n'
+        '  <div class="chart-container">\n'
+        f'    <svg viewBox="0 0 {chart_w} {chart_h}" preserveAspectRatio="none">\n'
+        f'      {grid}\n'
+        f'      <path d="{area_d}" fill="var(--row-hover)"/>\n'
+        f'      <polyline points="{pts_str}" fill="none" stroke="var(--primary)" '
+        f'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>\n'
+        f'      {dots}\n'
+        '    </svg>\n'
+        '  </div>\n'
+        f'  <div class="chart-labels">{labels}</div>\n'
+        '</div>\n'
+    )
+
+
 def generate_html(records: List[Dict[str, Any]], archive_dir: str, archive_url: str, page_size: int = 200) -> str:
     """Generate the HTML index page.
 
@@ -169,6 +240,7 @@ def generate_html(records: List[Dict[str, Any]], archive_dir: str, archive_url: 
     stat_cards = _build_stat_cards(cats)
     cat_options = _build_cat_options(cats)
     rows_html = _build_rows(records)
+    timeline_html = _build_timeline(records)
 
     html = (
         '<!DOCTYPE html>\n<html lang="zh-CN" data-theme="dark"><head>\n'
@@ -248,6 +320,12 @@ def generate_html(records: List[Dict[str, Any]], archive_dir: str, archive_url: 
         '.btn-locate:hover{background:var(--primary);color:var(--white)}\n'
         '.path-cell{font-size:12px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n'
         '.load-more{text-align:center;padding:20px}\n'
+        '.timeline{background:var(--bg-elevated);border-radius:10px;padding:16px;margin-bottom:24px;border:1px solid var(--border)}\n'
+        '.timeline-title{font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;letter-spacing:.02em}\n'
+        '.chart-container{width:100%;height:80px;position:relative}\n'
+        '.chart-container svg{width:100%;height:100%}\n'
+        '.chart-labels{display:flex;justify-content:space-between;padding:6px 20px 0}\n'
+        '.chart-label{font-size:11px;color:var(--text-muted)}\n'
         '.footer{text-align:center;padding:20px 0;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border)}\n'
         '.footer a{color:var(--text-muted);text-decoration:none;margin-left:12px;transition:color .2s}.footer a:hover{color:var(--primary)}\n'
         'html.theme-transitioning,html.theme-transitioning *,html.theme-transitioning *::before,html.theme-transitioning *::after{transition:background-color .35s ease,color .35s ease,border-color .35s ease,box-shadow .35s ease !important}\n'
@@ -268,6 +346,7 @@ def generate_html(records: List[Dict[str, Any]], archive_dir: str, archive_url: 
         '  <div class="summary-card" data-accent="mint"><div class="summary-label">文件分类</div><div class="summary-value mint">' + str(len(cats)) + '</div><div class="summary-unit">个类别</div></div>\n'
         '  <div class="summary-card" data-accent="lavender"><div class="summary-label">归档总大小</div><div class="summary-value lavender">' + format_size(total_size) + '</div><div class="summary-unit">存储空间</div></div>\n'
         '</div>\n'
+        + timeline_html +
         '<div class="stats-grid">\n' + stat_cards + '\n</div>\n'
         '<div class="toolbar">\n'
         '  <input type="text" id="search" placeholder="搜索文件名..." oninput="filterTable()">\n'

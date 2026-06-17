@@ -442,6 +442,7 @@ def _pil_render_elements(elements, color, bg_color,
 # ---------------------------------------------------------------------------
 
 _ICON_CACHE: dict = {}
+_ICON_CACHE_KEY: str = ""
 
 
 def _build_icon_cache(menu_bg, text_secondary, accent):
@@ -451,6 +452,10 @@ def _build_icon_cache(menu_bg, text_secondary, accent):
       - 'normal': stroke in text_secondary on menu_bg
       - 'accent': stroke in accent on hover_bg  (hover surface)
     """
+    global _ICON_CACHE, _ICON_CACHE_KEY
+    _ICON_CACHE.clear()
+    _ICON_CACHE_KEY = f"{menu_bg}|{text_secondary}|{accent}"
+
     import tkinter as tk
     import io
 
@@ -987,8 +992,9 @@ class ContextMenu:
         self._colors = c
         self._items_map = self._build_items_map()
 
-        # Ensure icon cache is built
-        if not _ICON_CACHE:
+        # Ensure icon cache is built (rebuild on theme change)
+        cache_key = f"{c['menu_bg']}|{c['text_secondary']}|{c['accent']}"
+        if cache_key != _ICON_CACHE_KEY:
             _build_icon_cache(c['menu_bg'], c['text_secondary'], c['accent'])
 
         self._menu_window = tk.Toplevel(self.parent)
