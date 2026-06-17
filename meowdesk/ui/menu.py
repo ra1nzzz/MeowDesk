@@ -82,28 +82,174 @@ def resolve_colors(config=None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Menu icon mapping (label -> unicode icon)
+# Canvas-drawn icon functions (matching prototype SVG stroke icons)
+# Each draws on an 18x18 canvas with ~1.5px stroke, tagged 'icon' for hover
 # ---------------------------------------------------------------------------
-MENU_ICONS = {
-    "\u6253\u5f00\u5bfc\u822a\u9875": "\u25CE",        # ◎  compass
-    "\u6253\u5f00\u5f52\u6863\u76ee\u5f55": "\U0001F4C1",  # 📁 folder
-    "\u81ea\u7531\u5bf9\u8bdd": "\U0001F4AC",            # 💬 chat
-    "\u6e05\u7406\u78c1\u76d8": "\U0001F9F9",            # 🧹 broom
-    "\u67e5\u770b\u65e5\u671f": "\U0001F4C5",            # 📅 calendar
-    "\u5047\u671f\u63d0\u9192": "\U0001F389",            # 🎉 party
-    "\u7ecf\u671f\u63d0\u9192": "\u2764",                # ❤  heart
-    "\u7cfb\u7edf\u4fe1\u606f": "\U0001F4BB",            # 💻 laptop
-    "\u8bbe\u7f6e": "\u2699",                            # ⚙  gear
-    "\u5173\u4e8e": "\u2139",                            # ℹ  info
-    "\u9000\u51fa": "\u23FB",                            # ⏻  power
-    "AI \u5de5\u5177\u7bb1": "\U0001F527",              # 🔧 wrench
+_SW = 1.5  # stroke width matching prototype stroke-width: 1.5
+
+
+def _icon_compass(cv, color):
+    """打开导航页 — circle + 4 cardinal ticks + diamond needle."""
+    cv.create_oval(2, 2, 16, 16, outline=color, width=_SW, tags='icon')
+    cv.create_line(9, 2, 9, 4, fill=color, width=_SW, tags='icon')
+    cv.create_line(9, 14, 9, 16, fill=color, width=_SW, tags='icon')
+    cv.create_line(2, 9, 4, 9, fill=color, width=_SW, tags='icon')
+    cv.create_line(14, 9, 16, 9, fill=color, width=_SW, tags='icon')
+    cv.create_line(9, 5, 11, 9, 9, 13, 7, 9, 9, 5,
+                   fill=color, width=1, tags='icon')
+
+
+def _icon_folder(cv, color):
+    """打开归档目录 — folder outline with tab."""
+    pts = [
+        (2, 6), (2, 4), (7, 4), (9, 6),
+        (16, 6), (16, 15), (2, 15),
+    ]
+    for i in range(len(pts)):
+        x1, y1 = pts[i]
+        x2, y2 = pts[(i + 1) % len(pts)]
+        cv.create_line(x1, y1, x2, y2, fill=color, width=_SW, tags='icon')
+
+
+def _icon_chat(cv, color):
+    """自由对话 — chat bubble with tail."""
+    cv.create_oval(2, 2, 16, 14, fill=cv['bg'], outline='', tags='icon_bg')
+    cv.create_polygon(2, 11, 6, 11, 3, 16, fill=cv['bg'], outline='', tags='icon_bg')
+    cv.create_polygon(2, 11, 6, 11, 3, 16, outline=color, fill='', tags='icon')
+    cv.create_oval(2, 2, 16, 14, outline=color, width=_SW, tags='icon')
+
+
+def _icon_wrench(cv, color):
+    """AI 工具箱 — wrench silhouette."""
+    cv.create_line(4, 14, 11, 7, fill=color, width=2, capstyle='round', tags='icon')
+    cv.create_arc(7, 2, 16, 11, start=45, extent=270, style='arc',
+                  outline=color, width=_SW, tags='icon')
+    cv.create_line(3, 13, 5, 15, fill=color, width=2, capstyle='round', tags='icon')
+
+
+def _icon_rocket(cv, color):
+    """清理磁盘 — upward arrow with base line and exhaust."""
+    cv.create_line(9, 3, 9, 14, fill=color, width=_SW, tags='icon')
+    cv.create_line(5, 7, 9, 3, 13, 7, fill=color, width=_SW,
+                   capstyle='round', joinstyle='round', tags='icon')
+    cv.create_line(3, 16, 15, 16, fill=color, width=_SW, tags='icon')
+    cv.create_line(6, 12, 4, 16, fill=color, width=1, tags='icon')
+    cv.create_line(12, 12, 14, 16, fill=color, width=1, tags='icon')
+
+
+def _icon_monitor(cv, color):
+    """系统信息 — monitor screen with stand."""
+    cv.create_rectangle(2, 3, 16, 12, outline=color, width=_SW, tags='icon')
+    cv.create_line(9, 12, 9, 15, fill=color, width=_SW, tags='icon')
+    cv.create_line(6, 15, 12, 15, fill=color, width=_SW, tags='icon')
+    cv.create_line(5, 6, 8, 6, fill=color, width=1, tags='icon')
+    cv.create_line(10, 6, 13, 6, fill=color, width=1, tags='icon')
+    cv.create_line(5, 9, 13, 9, fill=color, width=1, tags='icon')
+
+
+def _icon_calendar(cv, color):
+    """查看日期 — calendar grid."""
+    cv.create_rectangle(3, 4, 15, 16, outline=color, width=_SW, tags='icon')
+    cv.create_line(12, 2, 12, 6, fill=color, width=_SW, tags='icon')
+    cv.create_line(6, 2, 6, 6, fill=color, width=_SW, tags='icon')
+    cv.create_line(3, 8, 15, 8, fill=color, width=1, tags='icon')
+    for x in (6, 9, 12):
+        for y in (10, 13):
+            cv.create_line(x, y, x + 1, y, fill=color, width=1.5, tags='icon')
+
+
+def _icon_fireworks(cv, color):
+    """假期提醒 — sparkle burst."""
+    cv.create_line(12, 13, 2, 20, fill=color, width=_SW, tags='icon')
+    cv.create_line(16, 2, 8, 10, fill=color, width=1, tags='icon')
+    cv.create_line(12, 5, 10, 7, fill=color, width=1, tags='icon')
+    cv.create_line(16, 11, 14, 13, fill=color, width=1, tags='icon')
+    for cx, cy in [(4, 3), (16, 7), (9, 1), (16, 15)]:
+        cv.create_line(cx - 1, cy, cx + 1, cy, fill=color, width=1, tags='icon')
+        cv.create_line(cx, cy - 1, cx, cy + 1, fill=color, width=1, tags='icon')
+
+
+def _icon_heart(cv, color):
+    """经期提醒 — heart shape."""
+    cv.create_line(
+        9, 7, 7, 5, 5, 4, 4, 5, 3, 6, 3, 8, 3, 10,
+        5, 12, 7, 14, 9, 16,
+        11, 14, 13, 12, 15, 10, 15, 8, 15, 6, 14, 5,
+        13, 4, 11, 5, 9, 7,
+        fill=color, width=_SW, smooth=True, joinstyle='round', tags='icon',
+    )
+
+
+def _icon_gear(cv, color):
+    """设置 — gear with center hole and teeth."""
+    import math
+    cv.create_oval(7, 7, 11, 11, outline=color, width=_SW, tags='icon')
+    cx, cy = 9, 9
+    r_out, r_in = 8, 6
+    for i in range(8):
+        base = math.radians(i * 45)
+        half = math.radians(12)
+        a1 = base - half
+        a2 = base + half
+        cv.create_arc(cx - r_out, cy - r_out, cx + r_out, cy + r_out,
+                      start=math.degrees(a1), extent=math.degrees(a2 - a1),
+                      style='arc', outline=color, width=_SW, tags='icon')
+        ix1 = cx + r_out * math.cos(a1)
+        iy1 = cy - r_out * math.sin(a1)
+        ix2 = cx + r_in * math.cos(a1)
+        iy2 = cy - r_in * math.sin(a1)
+        cv.create_line(ix1, iy1, ix2, iy2, fill=color, width=_SW, tags='icon')
+        ox1 = cx + r_out * math.cos(a2)
+        oy1 = cy - r_out * math.sin(a2)
+        ix3 = cx + r_in * math.cos(a2)
+        iy3 = cy - r_in * math.sin(a2)
+        cv.create_line(ox1, oy1, ix3, iy3, fill=color, width=_SW, tags='icon')
+        gap_end = math.radians((i + 1) * 45 - 12)
+        gx = cx + r_in * math.cos(gap_end)
+        gy = cy - r_in * math.sin(gap_end)
+        cv.create_line(ix3, iy3, gx, gy, fill=color, width=1, tags='icon')
+
+
+def _icon_info(cv, color):
+    """关于 — circle with i."""
+    cv.create_oval(1, 1, 17, 17, outline=color, width=_SW, tags='icon')
+    cv.create_line(9, 8, 9, 13, fill=color, width=_SW, tags='icon')
+    cv.create_line(9, 6, 9, 6.5, fill=color, width=2, capstyle='round', tags='icon')
+
+
+def _icon_power(cv, color):
+    """退出 — power symbol."""
+    cv.create_arc(3, 4, 15, 16, start=30, extent=120, style='arc',
+                  outline=color, width=_SW, tags='icon')
+    cv.create_line(9, 2, 9, 9, fill=color, width=_SW, tags='icon')
+
+
+def _icon_arrow_right(cv, color):
+    """子菜单右箭头 chevron."""
+    cv.create_line(5, 4, 11, 9, 5, 14, fill=color, width=_SW,
+                   capstyle='round', joinstyle='round', tags='icon')
+
+
+# Label → drawing function mapping
+ICON_DRAWERS = {
+    "打开导航页": _icon_compass,
+    "打开归档目录": _icon_folder,
+    "自由对话": _icon_chat,
+    "清理磁盘": _icon_rocket,
+    "查看日期": _icon_calendar,
+    "假期提醒": _icon_fireworks,
+    "经期提醒": _icon_heart,
+    "系统信息": _icon_monitor,
+    "设置": _icon_gear,
+    "关于": _icon_info,
+    "退出": _icon_power,
+    "AI 工具箱": _icon_wrench,
 }
 
 # Labels that should use danger styling
 DANGER_LABELS = {"\u9000\u51fa"}  # 退出
 
-# Right chevron for submenu trigger
-SUBMENU_ARROW = "\u203A"  # ›
+# Right chevron for submenu trigger → drawn via _icon_arrow_right()
 
 # Menu structure matching HTML prototype:
 #   打开导航页, 打开归档目录, 自由对话
@@ -293,7 +439,7 @@ class ContextMenu:
     # ------------------------------------------------------------------
 
     def _create_menu_item(self, parent, y, label, callback, is_danger, c, width):
-        """Create a single menu item row with icon + label and hover effects.
+        """Create a single menu item row with Canvas-drawn icon + label.
 
         Prototype hover behavior:
           - bg changes to --hover-bg (coral-tinted)
@@ -322,14 +468,21 @@ class ContextMenu:
         frame.place(x=0, y=y, width=width, height=h)
         frame.pack_propagate(False)
 
-        # Icon (left aligned, 18px wide area)
-        icon = MENU_ICONS.get(label, "")
-        icon_label = tk.Label(frame, text=icon, bg=c['menu_bg'], fg=icon_fg,
-                              font=('Segoe UI Emoji', 10), width=2, anchor='center')
-        icon_label.place(x=pad_x, y=0, height=h, width=24)
+        # Icon area: 18x18 Canvas, centered vertically in the 40px row
+        icon_size = 18
+        icon_canvas = tk.Canvas(frame, width=icon_size, height=icon_size,
+                                bg=c['menu_bg'], highlightthickness=0, bd=0)
+        icon_canvas.place(x=pad_x, y=(h - icon_size) // 2)
+
+        # Store menu bg for icon bg fills (used by chat bubble etc.)
+        icon_canvas['bg'] = c['menu_bg']
+        # Draw the icon
+        draw_fn = ICON_DRAWERS.get(label)
+        if draw_fn:
+            draw_fn(icon_canvas, icon_fg)
 
         # Label (flex-1 after icon + gap)
-        text_x = pad_x + 24 + self.ITEM_GAP
+        text_x = pad_x + icon_size + self.ITEM_GAP
         text_label = tk.Label(frame, text=label, bg=c['menu_bg'], fg=fg,
                               font=('Microsoft YaHei', 10), anchor='w')
         text_label.place(x=text_x, y=0, height=h,
@@ -338,12 +491,22 @@ class ContextMenu:
         # Hover handlers (matching prototype transitions)
         def _on_enter(e):
             frame.configure(bg=hover_bg)
-            icon_label.configure(bg=hover_bg, fg=hover_icon_fg)
+            icon_canvas.configure(bg=hover_bg)
+            # Update stroke colors on all icon items
+            for item_id in icon_canvas.find_withtag('icon'):
+                icon_canvas.itemconfigure(item_id, outline=hover_icon_fg, fill=hover_icon_fg)
+            # Also update bg-fill items to match new hover bg
+            for item_id in icon_canvas.find_withtag('icon_bg'):
+                icon_canvas.itemconfigure(item_id, fill=hover_bg)
             text_label.configure(bg=hover_bg, fg=hover_label_fg)
 
         def _on_leave(e):
             frame.configure(bg=c['menu_bg'])
-            icon_label.configure(bg=c['menu_bg'], fg=icon_fg)
+            icon_canvas.configure(bg=c['menu_bg'])
+            for item_id in icon_canvas.find_withtag('icon'):
+                icon_canvas.itemconfigure(item_id, outline=icon_fg, fill=icon_fg)
+            for item_id in icon_canvas.find_withtag('icon_bg'):
+                icon_canvas.itemconfigure(item_id, fill=c['menu_bg'])
             text_label.configure(bg=c['menu_bg'], fg=fg)
 
         def _on_click(e):
@@ -351,7 +514,7 @@ class ContextMenu:
             if callback:
                 frame.after(50, callback)
 
-        for widget in (frame, icon_label, text_label):
+        for widget in (frame, icon_canvas, text_label):
             widget.bind('<Enter>', _on_enter)
             widget.bind('<Leave>', _on_leave)
             widget.bind('<Button-1>', _on_click)
@@ -362,7 +525,7 @@ class ContextMenu:
         """Create the 'AI 工具箱' submenu trigger item.
 
         Matches prototype:
-          - Icon (wrench), label, right chevron arrow
+          - Canvas icon (wrench), label, Canvas right chevron arrow
           - When expanded: 3px coral left accent bar, icon/label in accent color
           - Hover: same coral-tinted background as normal items
         """
@@ -371,6 +534,7 @@ class ContextMenu:
         h = self.ITEM_HEIGHT
         pad_x = self.ITEM_PAD_X
         hover_bg = c['menu_hover']
+        icon_size = 18
 
         frame = tk.Frame(parent, bg=c['menu_bg'], height=h, cursor='hand2')
         frame.place(x=0, y=y, width=width, height=h)
@@ -380,60 +544,78 @@ class ContextMenu:
         accent_bar = tk.Frame(frame, width=3, bg=c['menu_bg'])
         accent_bar.place(x=0, y=6, height=h - 12)
 
-        # Icon
-        icon = MENU_ICONS.get("AI \u5de5\u5177\u7bb1", "\U0001F527")
-        icon_label = tk.Label(frame, text=icon, bg=c['menu_bg'],
-                              fg=c['text_secondary'],
-                              font=('Segoe UI Emoji', 10), width=2, anchor='center')
-        icon_label.place(x=pad_x, y=0, height=h, width=24)
+        # Icon canvas (wrench)
+        icon_canvas = tk.Canvas(frame, width=icon_size, height=icon_size,
+                                bg=c['menu_bg'], highlightthickness=0, bd=0)
+        icon_canvas.place(x=pad_x, y=(h - icon_size) // 2)
+        icon_canvas['bg'] = c['menu_bg']
+        _icon_wrench(icon_canvas, c['text_secondary'])
 
         # Label
-        text_x = pad_x + 24 + self.ITEM_GAP
-        text_label = tk.Label(frame, text="AI \u5de5\u5177\u7bb1",
+        text_x = pad_x + icon_size + self.ITEM_GAP
+        text_label = tk.Label(frame, text="AI 工具箱",
                               bg=c['menu_bg'], fg=c['fg'],
                               font=('Microsoft YaHei', 10), anchor='w')
         text_label.place(x=text_x, y=0, height=h,
                          width=width - text_x - pad_x - 24)
 
-        # Right chevron arrow
-        arrow_label = tk.Label(frame, text=SUBMENU_ARROW, bg=c['menu_bg'],
-                               fg=c['text_muted'],
-                               font=('Microsoft YaHei', 14, 'bold'), anchor='center')
-        arrow_label.place(x=width - pad_x - 16, y=0, height=h, width=16)
+        # Right chevron arrow canvas
+        arrow_size = 14
+        arrow_canvas = tk.Canvas(frame, width=arrow_size, height=arrow_size,
+                                 bg=c['menu_bg'], highlightthickness=0, bd=0)
+        arrow_canvas.place(x=width - pad_x - arrow_size, y=(h - arrow_size) // 2)
+        arrow_canvas['bg'] = c['menu_bg']
+        _icon_arrow_right(arrow_canvas, c['text_muted'])
+
+        def _set_icon_color(color):
+            """Update icon canvas stroke colors."""
+            for item_id in icon_canvas.find_withtag('icon'):
+                icon_canvas.itemconfigure(item_id, outline=color, fill=color)
+
+        def _set_arrow_color(color):
+            """Update arrow canvas stroke colors."""
+            for item_id in arrow_canvas.find_withtag('icon'):
+                arrow_canvas.itemconfigure(item_id, outline=color, fill=color)
 
         def _set_expanded(expanded):
             """Toggle the expanded visual state."""
             if expanded:
                 accent_bar.configure(bg=c['accent'])
-                icon_label.configure(fg=c['accent'])
+                _set_icon_color(c['accent'])
                 text_label.configure(fg=c['accent_hover'])
-                arrow_label.configure(fg=c['accent'])
+                _set_arrow_color(c['accent'])
             else:
                 accent_bar.configure(bg=c['menu_bg'])
-                icon_label.configure(fg=c['text_secondary'])
+                _set_icon_color(c['text_secondary'])
                 text_label.configure(fg=c['fg'])
-                arrow_label.configure(fg=c['text_muted'])
+                _set_arrow_color(c['text_muted'])
 
         # Hover handlers
         def _on_enter(e):
             frame.configure(bg=hover_bg)
-            icon_label.configure(bg=hover_bg)
+            icon_canvas.configure(bg=hover_bg)
             text_label.configure(bg=hover_bg)
-            arrow_label.configure(bg=hover_bg)
+            arrow_canvas.configure(bg=hover_bg)
+            if not self._submenu_visible:
+                _set_icon_color(c['accent'])
+                _set_arrow_color(c['accent'])
             accent_bar.configure(bg=c['accent'] if self._submenu_visible else hover_bg)
             if not self._submenu_visible:
                 self._show_submenu(y)
 
         def _on_leave(e):
             frame.configure(bg=c['menu_bg'])
-            icon_label.configure(bg=c['menu_bg'])
+            icon_canvas.configure(bg=c['menu_bg'])
             text_label.configure(bg=c['menu_bg'])
-            arrow_label.configure(bg=c['menu_bg'])
+            arrow_canvas.configure(bg=c['menu_bg'])
+            if not self._submenu_visible:
+                _set_icon_color(c['text_secondary'])
+                _set_arrow_color(c['text_muted'])
             accent_bar.configure(bg=c['accent'] if self._submenu_visible else c['menu_bg'])
             if self._submenu_visible:
                 self._schedule_hide_submenu()
 
-        for widget in (frame, icon_label, text_label, arrow_label):
+        for widget in (frame, icon_canvas, text_label, arrow_canvas):
             widget.bind('<Enter>', _on_enter)
             widget.bind('<Leave>', _on_leave)
 
