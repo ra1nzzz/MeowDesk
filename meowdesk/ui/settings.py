@@ -575,10 +575,10 @@ class SettingsPanel:
                 cvs.create_line(r, h, w - r, h, fill=outline_color, tags='b')
                 cvs.create_line(0, r, 0, h - r, fill=outline_color, tags='b')
                 cvs.create_line(w, r, w, h - r, fill=outline_color, tags='b')
+            cvs.create_text(w // 2, h // 2, text=text, fill=txt_c,
+                            font=('Microsoft YaHei', 10, font_weight), tags='b')
 
         _draw(fill, border_c)
-        cvs.create_text(w // 2, h // 2, text=text, fill=txt_c,
-                        font=('Microsoft YaHei', 10, font_weight), tags='b')
 
         cvs.bind('<Enter>', lambda e: _draw(hover, border_c))
         cvs.bind('<Leave>', lambda e: _draw(fill, border_c))
