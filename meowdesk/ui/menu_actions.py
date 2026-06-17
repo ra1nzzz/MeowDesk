@@ -29,8 +29,9 @@ def build_menu_items(window: "MeowWindow") -> MenuSpec:
     Platform-specific menus (macOS native vs tkinter) can consume
     this structure and render appropriately.
 
-    Agent-dependent items ("自由对话", "AI 工具箱" submenu items)
-    are only included when the agent is available.
+    "自由对话" is only included when the agent is available.
+    "工具箱" submenu items are always included — they are local
+    commands that don't depend on the AI agent.
 
     Separator placement mirrors menu.py:_build_menu_order() —
     conditional separators avoid double separators when agent is off.
@@ -45,16 +46,16 @@ def build_menu_items(window: "MeowWindow") -> MenuSpec:
 
     if agent_available:
         items.append(("自由对话", lambda: action_open_chat(window)))
-        items.append(None)  # separator before AI tools
 
-        # AI 工具箱子菜单项 — 顺序与 menu.py SUBMENU_ITEMS 一致
-        items.extend([
-            ("清理磁盘", lambda: action_clean_disk(window)),
-            ("系统信息", lambda: action_system_info(window)),
-            ("查看日期", lambda: action_check_date(window)),
-            ("假期提醒", lambda: action_check_holidays(window)),
-            ("经期提醒", lambda: action_period_reminder(window)),
-        ])
+    # 工具箱子菜单项 — 始终显示，不依赖 agent
+    items.append(None)  # separator before toolbox
+    items.extend([
+        ("清理磁盘", lambda: action_clean_disk(window)),
+        ("系统信息", lambda: action_system_info(window)),
+        ("查看日期", lambda: action_check_date(window)),
+        ("假期提醒", lambda: action_check_holidays(window)),
+        ("经期提醒", lambda: action_period_reminder(window)),
+    ])
 
     items.append(None)  # separator before settings
     items.extend([

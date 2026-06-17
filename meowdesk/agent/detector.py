@@ -62,7 +62,7 @@ _seen = set()
 _COMMON_PORTS = [p for p in _COMMON_PORTS if not (p in _seen or _seen.add(p))]
 
 # 单端口 HTTP 请求超时（秒）
-_PER_PORT_TIMEOUT = 1.5
+_PER_PORT_TIMEOUT = 0.8
 
 # socket 预检超时（秒）— 端口未开放时快速跳过
 _SOCKET_PRECHECK_TIMEOUT = 0.3
@@ -180,6 +180,8 @@ def _probe_cli(timeout: float) -> DetectionResult:
     """检查 CLI 命令是否在 PATH 上并验证可用性。
 
     timeout 为剩余可用时间，subprocess 超时不超过此值。
+    如果命令存在（shutil.which 命中）但探测子命令失败，
+    仍返回低置信度结果——命令存在本身就是安装证据。
     """
     low_confidence_result: Optional[DetectionResult] = None
 
@@ -191,8 +193,19 @@ def _probe_cli(timeout: float) -> DetectionResult:
         if not shutil.which(name):
             continue
 
+        # 命令存在 — 记录低置信度结果（安装证据）
+        if low_confidence_result is None:
+            low_confidence_result = DetectionResult(
+                found=True,
+                agent_type=sig["agent_type"],
+                endpoint=sig["default_endpoint"],
+                source="cli",
+                confidence=0.5,
+                endpoint_verified=False,
+            )
+
         probe_args = sig.get("cli_probe_args")
-        sub_timeout = min(3, remaining)
+        sub_timeout = min(2, remaining)
         try:
             result = subprocess.run(
                 [name] + (probe_args or []),
@@ -209,19 +222,8 @@ def _probe_cli(timeout: float) -> DetectionResult:
                     endpoint_verified=False,
                 )
         except subprocess.TimeoutExpired:
-            # 命令卡住超时，不认为可用
             continue
         except (OSError, subprocess.SubprocessError):
-            # 命令存在但执行失败，记录低置信度结果但继续检查下一个
-            if low_confidence_result is None:
-                low_confidence_result = DetectionResult(
-                    found=True,
-                    agent_type=sig["agent_type"],
-                    endpoint=sig["default_endpoint"],
-                    source="cli",
-                    confidence=0.5,
-                    endpoint_verified=False,
-                )
             continue
 
     return low_confidence_result or DetectionResult(found=False)
@@ -284,16 +286,22 @@ class AgentDetector:
         """执行多层探测，返回第一个命中的结果。
 
         顺序按 _PROBE_STRATEGIES 列表（HTTP → CLI → 进程名）。
-        任何一层命中即返回，不再继续。总超时由 timeout 控制。
+        任何一层命中即返回，不再继续。
+
+        超时公平分配：每层获得 remaining / (剩余策略数) 的预算，
+        防止慢策略（如 HTTP 端口扫描）独占全部超时导致后续策略
+        无机会执行。每层最低保底 1.0 秒。
         """
         start = time.monotonic()
+        n = len(_PROBE_STRATEGIES)
 
-        for probe_fn in _PROBE_STRATEGIES:
+        for i, probe_fn in enumerate(_PROBE_STRATEGIES):
             remaining = timeout - (time.monotonic() - start)
-            if remaining <= 0:
+            if remaining < 0.5:
                 break
+            budget = max(remaining / (n - i), 1.0)
 
-            result = probe_fn(remaining)
+            result = probe_fn(budget)
             if result.found:
                 _log.info("agent detected via %s: %s at %s (confidence=%.2f)",
                           result.source, result.agent_type.value,

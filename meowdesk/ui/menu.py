@@ -2,7 +2,7 @@
 右键菜单模块 — Windows 自定义绘制实现
 
 使用 Toplevel + Canvas 实现圆角、悬停效果、图标和分区样式，
-支持二级子菜单（AI 工具箱），匹配 meowdesk-context-menu.html 原型设计。
+支持二级子菜单（工具箱），匹配 meowdesk-context-menu.html 原型设计。
 
 图标使用 PIL 超采样渲染（4x → 18×18 LANCZOS），确保抗锯齿质量。
 """
@@ -102,7 +102,7 @@ ICON_DATA = {
          'a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6'
          ' 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z'),
     ],
-    "AI 工具箱": [
+    "工具箱": [
         ('path',
          'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0'
          'l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91'
@@ -493,14 +493,15 @@ DANGER_LABELS = {"退出"}
 def _build_menu_order(agent_available: bool) -> list:
     """根据 agent 可用性动态生成菜单项顺序。
 
-    agent 不可用时，移除"自由对话"和"AI 工具箱"子菜单。
+    agent 不可用时仅移除"自由对话"（依赖 AI agent）。
+    "工具箱"子菜单始终显示（其中的功能为本地命令，不依赖 agent）。
     分隔符采用条件性添加策略，避免连续分隔符。
     """
     order = ["打开导航页", "打开归档目录"]
     if agent_available:
         order.append("自由对话")
-        order.append(None)  # separator before AI tools
-        order.append("SUBMENU")
+    order.append(None)  # separator before toolbox
+    order.append("SUBMENU")
     order.append(None)  # separator before settings
     order += ["设置", "关于", None, "退出"]
     return order
@@ -739,8 +740,8 @@ class ContextMenu:
         accent_bar.place(x=0, y=6, height=h - 12)
 
         # Wrench icon
-        normal_img = _get_icon("AI 工具箱", 'normal')
-        hover_img = _get_icon("AI 工具箱", 'accent')
+        normal_img = _get_icon("工具箱", 'normal')
+        hover_img = _get_icon("工具箱", 'accent')
         icon_label = tk.Label(frame, bg=c['menu_bg'],
                               image=normal_img, bd=0, highlightthickness=0)
         icon_label.place(x=pad_x, y=(h - icon_size) // 2,
@@ -750,7 +751,7 @@ class ContextMenu:
 
         # Label
         text_x = pad_x + icon_size + self.ITEM_GAP
-        text_label = tk.Label(frame, text="AI 工具箱",
+        text_label = tk.Label(frame, text="工具箱",
                               bg=c['menu_bg'], fg=c['fg'],
                               font=('Microsoft YaHei', 10), anchor='w')
         text_label.place(x=text_x, y=0, height=h,

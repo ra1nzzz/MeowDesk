@@ -334,8 +334,13 @@ class SettingsPanel:
         self._canvas.configure(scrollregion=self._canvas.bbox('all'))
 
     def _on_canvas_configure(self, event):
-        """Match inner frame width to canvas width on resize."""
-        self._canvas.itemconfigure(self._canvas_window, width=event.width)
+        """Match inner frame width to canvas width on resize.
+
+        Subtract scrollbar width so card right edges don't touch the
+        scrollbar — gives ~14px breathing room.
+        """
+        self._canvas.itemconfigure(self._canvas_window,
+                                   width=event.width - 14)
 
     def _bind_mousewheel(self):
         self._canvas.bind_all('<MouseWheel>', self._on_mousewheel)
