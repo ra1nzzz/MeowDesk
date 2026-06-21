@@ -47,6 +47,8 @@ OPTIONS = {
         'Cocoa',
         'Foundation',
         'AppKit',
+        'urllib3.contrib.resolver.system',
+        'chardet',
     ],
     'excludes': [
         'tkinter',
