@@ -11,7 +11,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 版本号
-VERSION="1.4.0"
+VERSION="1.5.0"
 
 echo -e "${BLUE}🔨 MeowDesk macOS 构建脚本 v${VERSION}${NC}"
 echo ""
@@ -98,8 +98,8 @@ if [[ "$choice" == "1" ]] || [[ "$choice" == "3" ]]; then
     <string>妙喵桌宠</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.4.0</string>
+         <key>CFBundleShortVersionString</key>
+         <string>1.5.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>
     <key>NSHighResolutionCapable</key>

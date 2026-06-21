@@ -22,6 +22,9 @@ def test_scalar_field_names_lists_expected_keys():
         "window_position",
         "scale",
         "launch_at_startup",
+        "first_run_completed",
+        "agent_auto_detected",
+        "color_mode",
     }
     assert set(AppConfig.scalar_field_names()) == expected
 

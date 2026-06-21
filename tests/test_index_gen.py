@@ -61,7 +61,7 @@ def test_generate_html_returns_valid_string():
 def test_generate_html_empty_records():
     html = generate_html([], "/data", "/data")
     assert "<!DOCTYPE html>" in html
-    assert "妙喵桌宠 MeowDesk · 共" + "0" + "个文件" in html
+    assert "妙喵桌宠 MeowDesk · 共 0 个文件" in html
 
 
 def test_generate_html_recycle_badge():

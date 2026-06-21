@@ -83,7 +83,8 @@ def test_settings_panel_keeps_footer_buttons_visible():
             panel = SettingsPanel(root, config)
             panel.window.update_idletasks()
 
-            assert len(panel.notebook.tabs()) == 4
+            # New SettingsPanel uses custom sidebar with _tab_frames
+            assert len(panel._tab_frames) == 4
 
             children = panel.button_frame.winfo_children()
             assert len(children) >= 2

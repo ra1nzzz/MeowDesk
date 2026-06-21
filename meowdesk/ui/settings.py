@@ -63,12 +63,43 @@ def _is_windows_dark_mode() -> bool:
         return True                      # fallback to dark
 
 
+def _is_macos_dark_mode() -> bool:
+    """Detect macOS dark-mode preference from NSUserDefaults."""
+    try:
+        from Foundation import NSUserDefaults
+        defaults = NSUserDefaults.standardUserDefaults()
+        # AppleInterfaceStyle returns "Dark" when in dark mode, nil otherwise
+        style = defaults.stringForKey_("AppleInterfaceStyle")
+        return style is not None and style.lower() == "dark"
+    except Exception:
+        # Fallback: try via defaults command
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["defaults", "read", "-g", "AppleInterfaceStyle"],
+                capture_output=True, text=True
+            )
+            return "dark" in result.stdout.lower()
+        except Exception:
+            return True  # fallback to dark
+
+
+def _is_system_dark_mode() -> bool:
+    """Detect system dark mode based on platform."""
+    import sys
+    if sys.platform == "darwin":
+        return _is_macos_dark_mode()
+    elif sys.platform == "win32":
+        return _is_windows_dark_mode()
+    return True  # fallback to dark
+
+
 def resolve_colors(color_mode: str) -> dict:
     """Return the correct palette dict based on *color_mode*."""
     if color_mode == "light":
         return dict(LIGHT_COLORS)
     if color_mode == "system":
-        return dict(DARK_COLORS) if _is_windows_dark_mode() else dict(LIGHT_COLORS)
+        return dict(DARK_COLORS) if _is_system_dark_mode() else dict(LIGHT_COLORS)
     return dict(DARK_COLORS)
 
 
