@@ -49,17 +49,14 @@ def _wrap_lines(
             continue
         # Greedy wrap: accumulate chars until next char would overflow
         current = ""
-        cw = 0
         for ch in line:
             test = current + ch
             tw = draw.textbbox((0, 0), test, font=font)[2]
             if tw > max_width and current:
                 wrapped.append(current)
                 current = ch
-                cw = draw.textbbox((0, 0), ch, font=font)[2]
             else:
                 current = test
-                cw = tw
         if current:
             wrapped.append(current)
     return wrapped

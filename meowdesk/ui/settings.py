@@ -557,7 +557,6 @@ class SettingsPanel:
         c = self.COLORS
         r = 8  # corner radius
         pad_x = 18
-        pad_y = 7
 
         if canvas_bg is None:
             canvas_bg = c['bg']
@@ -1073,6 +1072,11 @@ class SettingsPanel:
             self.agent_type_var.set(result.agent_type.value)
             self.endpoint_var.set(result.endpoint)
             self.ai_enabled_var.set(True)
+            # Auto-select communication mode based on detection
+            if result.agent_type.value == 'hermes' and result.endpoint_verified:
+                self.mode_var.set('llm')
+            else:
+                self.mode_var.set('agent')
             self._agent_detect_label.config(
                 text=f"已检测到 {type_name} ({result.endpoint})",
                 fg=self.COLORS.get('success', '#4CAF50'),

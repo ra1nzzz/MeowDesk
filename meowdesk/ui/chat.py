@@ -9,7 +9,7 @@ import threading
 
 # 从 settings 导入颜色配置
 try:
-    from .settings import SettingsPanel, resolve_colors, DARK_COLORS
+    from .settings import resolve_colors, DARK_COLORS
 except ImportError:
     DARK_COLORS = {
         'bg': '#121218',
@@ -194,39 +194,75 @@ class ChatWindow:
         self._send_message()
     
     def _send_to_ai(self, message: str):
-        """发送消息到 AI（异步）"""
+        """发送消息到 AI（异步）
+
+        会话管理（参考 Aion 的 messages + acp_sessions）：
+        - 构建带角色的消息历史（user/assistant），过滤 system/error
+        - 携带 session_id 和 actor 绑定信息
+        - 超时/连接失败时给出明确提示
+        """
         if not self.agent_gateway:
-            self._add_message("AI 助手未配置，请在设置中配置 AI 网关。", 'error_msg')
+            self._add_message("AI 助手未配置，请在设置中启用并配置。", 'error_msg')
             return
-        
+
+        if not self.agent_gateway.enabled:
+            self._add_message("AI 助手已禁用，请在设置中启用。", 'error_msg')
+            return
+
         self._is_sending = True
         self.status_label.config(text="正在思考...")
-        
+
         def send_thread():
             try:
+                # Build history with proper roles (exclude system/error)
+                history = []
+                for msg in self.messages:
+                    role = msg.get('role', '')
+                    content = msg.get('raw_content', '')
+                    if role in ('user', 'assistant') and content:
+                        history.append({'role': role, 'content': content})
                 context = {
                     'session_id': self.session_id,
-                    'history': self.messages[-10:]
+                    'history': history[-20:],
                 }
                 result = self.agent_gateway.chat(message, context)
                 self.window.after(0, lambda: self._handle_response(result))
             except Exception as e:
                 error_msg = str(e)
                 self.window.after(0, lambda msg=error_msg: self._handle_error(msg))
-        
+
         threading.Thread(target=send_thread, daemon=True).start()
+
     
     def _handle_response(self, result: Dict[str, Any]):
-        """处理 AI 响应"""
+        """处理 AI 响应
+
+        错误恢复策略（参考 Aion 事件总线的错误处理）：
+        - 连接失败: 提示检查 Agent 状态
+        - 超时: 提示减少输入长度或重试
+        - 未知错误: 显示原始错误信息
+        """
         self._is_sending = False
         self.status_label.config(text="就绪")
-        
+
         if result.get('success'):
-            self._add_message(f"AI: {result.get('response', '无响应')}", 'ai_msg')
+            response = result.get('response', '无响应')
+            if result.get('session_id'):
+                self.session_id = result['session_id']
+            self._add_message(f"AI: {response}", 'ai_msg')
             for action in result.get('actions', []):
                 self._execute_action(action)
         else:
-            self._add_message(f"AI 响应失败: {result.get('error', '未知错误')}", 'error_msg')
+            error = result.get('error', '未知错误')
+            if '超时' in error or 'timeout' in error.lower():
+                self._add_message("请求超时，请稍后重试或减少输入长度。", 'error_msg')
+            elif '连接' in error or 'connect' in error.lower() or 'refused' in error.lower():
+                self._add_message("连接失败：请确认 AI Agent 已启动并在设置中检查端点配置。", 'error_msg')
+            elif '未启用' in error:
+                self._add_message("AI 助手未启用，请在设置中开启。", 'error_msg')
+            else:
+                self._add_message(f"AI 响应失败: {error}", 'error_msg')
+
     
     def _handle_error(self, error: str):
         """处理错误"""
@@ -249,10 +285,14 @@ class ChatWindow:
         self.msg_text.see('end')
         self.msg_text.config(state='disabled')
         
-        # 记录消息历史
+        # 记录消息历史 (raw_content 用于构建 API 上下文)
+        role = 'user' if tag == 'user_msg' else 'assistant'
+        if tag in ('system_msg', 'error_msg'):
+            role = 'system'
         self.messages.append({
-            'role': 'user' if tag == 'user_msg' else 'assistant',
+            'role': role,
             'content': message,
+            'raw_content': message,
             'timestamp': timestamp
         })
         
@@ -261,10 +301,12 @@ class ChatWindow:
             self.messages = self.messages[-self.MAX_MESSAGES:]
     
     def _clear_chat(self):
-        """清空对话"""
+        """清空对话并重置会话"""
         if self._messagebox.askyesno("确认", "确定要清空对话历史吗？", parent=self.window):
             self.msg_text.config(state='normal')
             self.msg_text.delete('1.0', 'end')
             self.msg_text.config(state='disabled')
             self.messages.clear()
-            self._add_message("对话已清空。", 'system_msg')
+            if self.agent_gateway:
+                self.agent_gateway.reset_session()
+            self._add_message("对话已清空，会话已重置。", 'system_msg')

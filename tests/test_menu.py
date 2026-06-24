@@ -101,9 +101,8 @@ def test_settings_panel_keeps_footer_buttons_visible():
 def test_settings_panel_save_persists_typed_values(monkeypatch):
     from meowdesk.ui.settings import SettingsPanel
 
-    try:
-        import tkinter
-    except ImportError:
+    import importlib.util
+    if importlib.util.find_spec("tkinter") is None:
         pytest.skip("Tk unavailable: tkinter not installed")
         return
     monkeypatch.setattr("tkinter.messagebox.showinfo", lambda *_, **__: None)
@@ -153,9 +152,8 @@ def test_settings_panel_save_persists_typed_values(monkeypatch):
 def test_settings_panel_save_persists_launch_at_startup(monkeypatch):
     from meowdesk.ui.settings import SettingsPanel
 
-    try:
-        import tkinter
-    except ImportError:
+    import importlib.util
+    if importlib.util.find_spec("tkinter") is None:
         pytest.skip("Tk unavailable: tkinter not installed")
         return
     monkeypatch.setattr("tkinter.messagebox.showinfo", lambda *_, **__: None)

@@ -7,7 +7,6 @@
 图标使用 PIL 超采样渲染（4x → 18×18 LANCZOS），确保抗锯齿质量。
 """
 
-import sys
 import math
 import re
 from typing import Any, Optional
@@ -462,10 +461,8 @@ def _build_icon_cache(menu_bg, text_secondary, accent):
     # Determine hover bg based on palette (dark vs light)
     if menu_bg.upper() in ('#FFFFFF', '#FAF7F2'):
         hover_bg = '#FDF0EB'    # light hover
-        danger_hover = '#FDE8E8'
     else:
         hover_bg = '#2D2428'    # dark hover
-        danger_hover = '#2C1A1F'
 
     all_icons = dict(ICON_DATA)
     all_icons['_arrow'] = _CHEVRON_RIGHT

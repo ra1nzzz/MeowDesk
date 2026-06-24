@@ -1,5 +1,4 @@
 ﻿import types
-import pytest
 
 from meowdesk.ui import menu_actions
 

@@ -78,14 +78,16 @@ class TestChat:
             "choices": [{"message": {"content": "喵~"}}]}}
         with patch_request(gw, resp):
             result = gw.chat("hi")
-        assert result == {"success": True, "response": "喵~"}
+        assert result["success"] is True
+        assert result["response"] == "喵~"
 
     def test_simple_format(self):
         gw = make_gateway()
         resp = {"success": True, "data": {"response": "ok"}}
         with patch_request(gw, resp):
             result = gw.chat("hi")
-        assert result == {"success": True, "response": "ok"}
+        assert result["success"] is True
+        assert result["response"] == "ok"
 
     def test_http_failure_non_openclaw(self):
         gw = make_gateway(agent_type=AgentType.CUSTOM)
@@ -103,7 +105,8 @@ class TestChat:
                 patch("meowdesk.agent.gateway.subprocess.run",
                       return_value=cli_proc) as run:
             result = gw.chat("hi")
-        assert result == {"success": True, "response": "你好喵"}
+        assert result["success"] is True
+        assert result["response"] == "你好喵"
         assert run.call_args[0][0][0] == "openclaw"
 
     def test_cli_timeout(self):
