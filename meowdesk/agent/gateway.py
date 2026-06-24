@@ -1,4 +1,4 @@
-﻿"""
+"""
 Agent Gateway - 连接本地 AI Agent (OpenClaw, Hermes 等)
 
 通信模式（参考 Aion ACP 架构）：
@@ -13,6 +13,7 @@ Agent Gateway - 连接本地 AI Agent (OpenClaw, Hermes 等)
 
 import json
 import subprocess
+import threading
 import time
 from typing import Dict, Any, Optional, List
 
@@ -58,6 +59,7 @@ class AgentGateway:
 
         # Session / actor binding (Aion-style)
         self.session_id: Optional[str] = None
+        self._session_lock = threading.Lock()
         self.actor: str = self.agent_type.value if self.agent_type else ""
 
         # Strategy pattern: bind _do_request once based on HAS_REQUESTS
@@ -93,7 +95,9 @@ class AgentGateway:
         后续调用复用同一会话，保持对话连续性。
         """
         if self.session_id is None:
-            from datetime import datetime
+            with self._session_lock:
+                if self.session_id is None:
+                    from datetime import datetime
             self.session_id = f"meowdesk_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         return self.session_id
 
