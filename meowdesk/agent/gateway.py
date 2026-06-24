@@ -1,9 +1,9 @@
-"""
+﻿"""
 Agent Gateway - 连接本地 AI Agent (OpenClaw, Hermes 等)
 
 通信模式（参考 Aion ACP 架构）：
   - agent 模式: 通过 HTTP API 或 CLI 与本地 Agent 通信
-  - llm 模式:   直通 LLM API (OpenAI-compatible)
+  - llm 模式:   直连 LLM API (OpenAI-compatible)
 
 会话管理：
   - 每个 AgentGateway 实例绑定一个 session_id
@@ -13,6 +13,7 @@ Agent Gateway - 连接本地 AI Agent (OpenClaw, Hermes 等)
 
 import json
 import subprocess
+import time
 from typing import Dict, Any, Optional, List
 
 from ..core.types import AgentConfig, AgentType
@@ -28,17 +29,21 @@ except ImportError:
     import urllib.error
 
 
+# is_available TTL cache duration (seconds)
+_AVAILABILITY_CACHE_TTL = 30
+
+
 class AgentGateway:
     """Agent 网关 - 统一接口连接不同的本地 Agent
 
     支持三种通信路径：
     1. HTTP API (agent 模式) — 通过 endpoint + path 发送请求
     2. CLI 调用 (agent 模式) — 通过 subprocess 调用 openclaw CLI
-    3. 直通 LLM (llm 模式) — 直接调用 OpenAI-compatible API
+   3. 直连 LLM (llm 模式) — 直接调用 OpenAI-compatible API
 
     会话绑定：
     - session_id: 当前会话标识，首次使用时生成
-    - actor: 绑定的 Agent 角色名（如 "hermes"），参考 Aion 的 actor 绑定机制
+    - actor: 绑定的 Agent 角色名（如"hermes"），参考 Aion 的 actor 绑定机制
     """
 
     def __init__(self, config: AgentConfig):
@@ -54,6 +59,24 @@ class AgentGateway:
         # Session / actor binding (Aion-style)
         self.session_id: Optional[str] = None
         self.actor: str = self.agent_type.value if self.agent_type else ""
+
+        # Strategy pattern: bind _do_request once based on HAS_REQUESTS
+        if HAS_REQUESTS:
+            self._session = requests.Session()
+            self._do_request = self._do_request_with_session
+        else:
+            self._session = None
+            self._do_request = self._do_request_with_urllib
+
+        # is_available TTL cache
+        self._avail_cache: Optional[bool] = None
+        self._avail_cache_ts: float = 0.0
+
+    def close(self) -> None:
+        """Close the underlying HTTP session / connection pool."""
+        if self._session is not None:
+            self._session.close()
+            self._session = None
 
     @property
     def headers(self) -> Dict[str, str]:
@@ -77,24 +100,19 @@ class AgentGateway:
     def _request(self, method: str, path: str, data: Optional[Dict] = None) -> Dict[str, Any]:
         """发送 HTTP 请求（跨平台）"""
         url = f"{self.endpoint}{path}"
-
-        if HAS_REQUESTS:
-            return self._request_with_requests(method, url, data)
-        return self._request_with_urllib(method, url, data)
+        return self._do_request(method, url, data)
 
     def _request_raw(self, method: str, url: str, data: Optional[Dict] = None) -> Dict[str, Any]:
         """Send HTTP request to an absolute URL (not using self.endpoint + path)."""
-        if HAS_REQUESTS:
-            return self._request_with_requests(method, url, data)
-        return self._request_with_urllib(method, url, data)
+        return self._do_request(method, url, data)
 
-    def _request_with_requests(self, method: str, url: str, data: Optional[Dict]) -> Dict[str, Any]:
-        """使用 requests 库发送请求"""
+    def _do_request_with_session(self, method: str, url: str, data: Optional[Dict]) -> Dict[str, Any]:
+        """使用 requests.Session 发送请求（复用 TCP 连接）"""
         try:
             if method == 'GET':
-                resp = requests.get(url, headers=self.headers, timeout=self.timeout)
+                resp = self._session.get(url, headers=self.headers, timeout=self.timeout)
             else:
-                resp = requests.post(url, json=data, headers=self.headers, timeout=self.timeout)
+                resp = self._session.post(url, json=data, headers=self.headers, timeout=self.timeout)
 
             if resp.status_code == 200:
                 try:
@@ -109,30 +127,63 @@ class AgentGateway:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-    def _request_with_urllib(self, method: str, url: str, data: Optional[Dict]) -> Dict[str, Any]:
+    def _do_request_with_urllib(self, method: str, url: str, data: Optional[Dict]) -> Dict[str, Any]:
         """使用 urllib 库发送请求（后备方案）"""
         try:
             body = json.dumps(data).encode('utf-8') if data else None
             req = urllib.request.Request(url, data=body, headers=self.headers, method=method)
+            if body and 'Content-Type' not in req.headers:
+                req.add_header('Content-Type', 'application/json')
 
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                return {'success': True, 'status': resp.status, 'data': json.loads(resp.read().decode('utf-8')), 'error': None}
+                raw = resp.read().decode('utf-8')
+                try:
+                    json_data = json.loads(raw) if raw else {}
+                except ValueError:
+                    json_data = {'response': raw} if raw else {}
+                return {'success': True, 'status': resp.status, 'data': json_data, 'error': None}
         except urllib.error.HTTPError as e:
-            return {'success': False, 'status': e.code, 'error': str(e)}
+            error_body = ""
+            try:
+                error_body = e.read().decode('utf-8', errors='replace')
+            except Exception:
+                pass
+            return {'success': False, 'status': e.code, 'data': None, 'error': error_body or str(e)}
+        except urllib.error.URLError as e:
+            return {'success': False, 'error': str(e.reason)}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    # Keep old method names as aliases for backward compatibility with tests
+    _request_with_requests = _do_request_with_session
+    _request_with_urllib = _do_request_with_urllib
+
+    def invalidate_availability_cache(self) -> None:
+        """主动失效 is_available 的 TTL 缓存，供连接失败时调用。"""
+        self._avail_cache = None
+        self._avail_cache_ts = 0.0
+
     def is_available(self) -> bool:
-        """检查 Agent 是否可用"""
+        """检查 Agent 是否可用（带 TTL 缓存）"""
         if not self.enabled:
             return False
 
-        # LLM 直通模式: 只要有端点就认为可用
+        now = time.monotonic()
+        if self._avail_cache is not None and (now - self._avail_cache_ts) < _AVAILABILITY_CACHE_TTL:
+            return self._avail_cache
+
+        result = self._probe_availability()
+        self._avail_cache = result
+        self._avail_cache_ts = now
+        return result
+
+    def _probe_availability(self) -> bool:
+        """实际执行可用性探测（无缓存）。"""
+        # LLM 直通模式: 只要端点就认为可用
         if self.mode == 'llm':
             return bool(self.endpoint)
 
         # Agent 模式: 尝试 HTTP 健康检查
-        # 使用 agent-specific health paths if available
         sig = AGENT_SIGNATURES.get(self.agent_type.value, {})
         health_paths = sig.get("health_paths", HEALTH_PATHS)
         for path in health_paths:
@@ -172,7 +223,7 @@ class AgentGateway:
         """发送对话消息
 
         根据 self.mode 选择通信路径：
-        - llm 模式: 直通 LLM API（OpenAI-compatible）
+        - llm 模式: 直连 LLM API（OpenAI-compatible）
         - agent 模式: 先尝试 HTTP，失败后降级到 CLI
 
         会话管理：
@@ -216,7 +267,7 @@ class AgentGateway:
         messages = []
 
         # System prompt with actor awareness
-        sys_prompt = "你是妙喵桌宠的 AI 助手，用中文友好、简洁地回答用户问题。"
+        sys_prompt = "你是喵喵桌面宠的 AI 助手，用中文友好、简洁地回答用户问题。"
         if self.actor:
             sys_prompt += f" 当前绑定角色: {self.actor}。"
         messages.append({'role': 'system', 'content': sys_prompt})

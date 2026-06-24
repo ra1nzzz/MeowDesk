@@ -41,12 +41,14 @@ AGENT_SIGNATURES: dict = {
         "default_port": 8080,
         "default_endpoint": "http://localhost:8080",
         "cli_probe_args": ["agents", "list"],
+        "default_mode": "agent",
     },
     "hermes": {
         "agent_type": AgentType.HERMES,
         "default_port": 3000,
         "default_endpoint": "http://localhost:3000",
         "cli_probe_args": ["--version"],
+        "default_mode": "llm",
     },
 }
 
@@ -81,7 +83,7 @@ class DetectionResult:
     confidence: float = 0.0       # 0.0 - 1.0
     endpoint_verified: bool = False  # endpoint 是否经 HTTP 实测验证
     version: str = ""             # agent 版本号 (若可获取)
-    capabilities: list = field(default_factory=list)  # agent 支持的能力列表
+    capabilities: List[str] = field(default_factory=list)
 
 
 def _port_to_agent_type(port: int) -> Tuple[AgentType, bool]:
@@ -297,6 +299,23 @@ ProbeFn = Callable[[float], DetectionResult]
 _PROBE_STRATEGIES: List[ProbeFn] = [_probe_http, _probe_cli, _probe_process]
 
 
+
+def resolve_default_mode(
+    agent_type: AgentType, endpoint_verified: bool
+) -> str:
+    """Determine default communication mode from agent signature.
+
+    Uses the ``default_mode`` field in :data:`AGENT_SIGNATURES`.
+    When the signature says ``"llm"`` but the endpoint has not been
+    verified via HTTP, we fall back to ``"agent"`` for safety.
+    """
+    sig = AGENT_SIGNATURES.get(agent_type.value, {})
+    default = sig.get("default_mode", "agent")
+    if default == "llm" and not endpoint_verified:
+        return "agent"
+    return default
+
+
 class AgentDetector:
     """自动检测本机 AI Agent。
 
@@ -353,11 +372,9 @@ def detect_and_configure(config_manager, timeout: float = _MAX_TIMEOUT) -> Detec
     result = AgentDetector.detect(timeout=timeout)
 
     if result.found:
-        # Determine communication mode based on agent type and capabilities
-        mode = "agent"
-        if result.agent_type == AgentType.HERMES and result.endpoint_verified:
-            # Hermes with verified endpoint supports direct LLM-compatible API
-            mode = "llm"
+        mode = resolve_default_mode(
+            result.agent_type, result.endpoint_verified
+        )
 
         new_config = AgentConfig(
             enabled=True,

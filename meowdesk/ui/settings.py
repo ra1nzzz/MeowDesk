@@ -761,6 +761,8 @@ class SettingsPanel:
         timeout_row = self.tk.Frame(card, bg=c['entry_bg'])
         timeout_row.pack(anchor='w')
         self.timeout_var = self.tk.IntVar(value=self.config.agent_config.timeout)
+        self.mode_var = self.tk.StringVar(value=getattr(self.config.agent_config, 'mode', 'agent'))
+        self.model_var = self.tk.StringVar(value=getattr(self.config.agent_config, 'model', ''))
         self.tk.Spinbox(timeout_row, textvariable=self.timeout_var, from_=5, to=120,
                         bg=c['bg_input'], fg=c['fg'], insertbackground=c['fg'],
                         relief="flat", font=("Microsoft YaHei", 10), width=6).pack(side='left')
@@ -1072,11 +1074,11 @@ class SettingsPanel:
             self.agent_type_var.set(result.agent_type.value)
             self.endpoint_var.set(result.endpoint)
             self.ai_enabled_var.set(True)
-            # Auto-select communication mode based on detection
-            if result.agent_type.value == 'hermes' and result.endpoint_verified:
-                self.mode_var.set('llm')
-            else:
-                self.mode_var.set('agent')
+            # Auto-select communication mode using shared policy
+            from ..agent.detector import resolve_default_mode
+            self.mode_var.set(
+                resolve_default_mode(result.agent_type, result.endpoint_verified)
+            )
             self._agent_detect_label.config(
                 text=f"已检测到 {type_name} ({result.endpoint})",
                 fg=self.COLORS.get('success', '#4CAF50'),
@@ -1211,6 +1213,8 @@ class SettingsPanel:
             agent_config.endpoint = self.endpoint_var.get().strip()
             agent_config.api_key = self.token_var.get().strip()
             agent_config.timeout = self.timeout_var.get()
+            agent_config.mode = self.mode_var.get()
+            agent_config.model = self.model_var.get().strip()
             self.config.config.agent = agent_config
 
             period = self.config.config.period

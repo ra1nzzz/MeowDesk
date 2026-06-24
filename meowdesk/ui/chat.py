@@ -184,7 +184,7 @@ class ChatWindow:
             return
         
         self.input_text.delete('1.0', 'end')
-        self._add_message(f"你: {message}", 'user_msg')
+        self._add_message(f"你: {message}", 'user_msg', raw_content=message)
         self._send_to_ai(message)
     
     def _send_quick_command(self, command: str):
@@ -275,7 +275,7 @@ class ChatWindow:
         if action.get('type') == 'command':
             self._add_message(f"执行命令: {action.get('command')}", 'system_msg')
     
-    def _add_message(self, message: str, tag: str):
+    def _add_message(self, message: str, tag: str, raw_content: str | None = None):
         """添加消息到显示区域"""
         timestamp = datetime.now().strftime('%H:%M')
         
@@ -292,7 +292,7 @@ class ChatWindow:
         self.messages.append({
             'role': role,
             'content': message,
-            'raw_content': message,
+            'raw_content': raw_content if raw_content is not None else message,
             'timestamp': timestamp
         })
         
