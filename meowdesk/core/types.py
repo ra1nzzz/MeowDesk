@@ -49,14 +49,19 @@ class CategoryConfig:
 
 @dataclass
 class AgentConfig:
-    """AI Agent 配置"""
+    """AI Agent 配置
+
+    mode 控制通信方式：
+      - "agent"  : 本地 Agent 模式 (OpenClaw / Hermes CLI 或 HTTP)
+      - "llm"    : 直通 LLM API 模式 (OpenAI-compatible /v1/chat/completions)
+    """
     enabled: bool = False
     agent_type: AgentType = AgentType.OPENCLAW
     endpoint: str = "http://localhost:8080"
     api_key: str = ""
     timeout: int = 30
-    mode: str = "llm"          # "agent" = local agent, "llm" = direct LLM API
-    model: str = ""            # model name for LLM mode (e.g. "deepseek-chat", "gpt-4o-mini")
+    mode: str = "agent"                # "agent" | "llm"
+    model: str = ""                    # LLM 模型名称 (mode=llm 时生效)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'AgentConfig':
@@ -67,7 +72,7 @@ class AgentConfig:
             endpoint=data.get('endpoint', 'http://localhost:8080').rstrip('/'),
             api_key=data.get('api_key', ''),
             timeout=data.get('timeout', 30),
-            mode=data.get('mode', 'llm'),
+            mode=data.get('mode', 'agent'),
             model=data.get('model', ''),
         )
 

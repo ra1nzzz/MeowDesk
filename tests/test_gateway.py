@@ -78,14 +78,16 @@ class TestChat:
             "choices": [{"message": {"content": "喵~"}}]}}
         with patch_request(gw, resp):
             result = gw.chat("hi")
-        assert result == {"success": True, "response": "喵~"}
+        assert result["success"] is True
+        assert result["response"] == "喵~"
 
     def test_simple_format(self):
         gw = make_gateway()
         resp = {"success": True, "data": {"response": "ok"}}
         with patch_request(gw, resp):
             result = gw.chat("hi")
-        assert result == {"success": True, "response": "ok"}
+        assert result["success"] is True
+        assert result["response"] == "ok"
 
     def test_http_failure_non_openclaw(self):
         gw = make_gateway(agent_type=AgentType.CUSTOM)
@@ -103,7 +105,8 @@ class TestChat:
                 patch("meowdesk.agent.gateway.subprocess.run",
                       return_value=cli_proc) as run:
             result = gw.chat("hi")
-        assert result == {"success": True, "response": "你好喵"}
+        assert result["success"] is True
+        assert result["response"] == "你好喵"
         assert run.call_args[0][0][0] == "openclaw"
 
     def test_cli_timeout(self):
@@ -189,3 +192,47 @@ class TestIsAvailable:
                 patch("meowdesk.agent.gateway.subprocess.run",
                       side_effect=FileNotFoundError("openclaw")):
             assert gw.is_available() is False
+
+
+
+# ---------- Session management ----------
+
+class TestSessionManagement:
+    def test_session_created_on_first_chat(self):
+        gw = make_gateway()
+        assert gw.session_id is None
+        with patch.object(gw, "_request", return_value={"success": False, "error": "test"}):
+            gw.chat("hi")
+        assert gw.session_id is not None
+        assert gw.session_id.startswith("meowdesk_")
+
+    def test_reset_session_clears_id(self):
+        gw = make_gateway()
+        with patch.object(gw, "_request", return_value={"success": False, "error": "test"}):
+            gw.chat("hi")
+        gw.reset_session()
+        assert gw.session_id is None
+
+
+# ---------- LLM mode ----------
+
+class TestLLMMode:
+    def test_llm_mode_uses_request_raw(self):
+        gw = make_gateway()
+        gw.mode = "llm"
+        resp = {
+            "success": True,
+            "data": {"choices": [{"message": {"content": "hi"}}]},
+        }
+        with patch.object(gw, "_request_raw", return_value=resp):
+            result = gw.chat("hello")
+        assert result["success"] is True
+        assert result["response"] == "hi"
+
+    def test_llm_mode_error(self):
+        gw = make_gateway()
+        gw.mode = "llm"
+        resp = {"success": False, "error": "timeout"}
+        with patch.object(gw, "_request_raw", return_value=resp):
+            result = gw.chat("hello")
+        assert result["success"] is False

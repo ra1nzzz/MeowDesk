@@ -18,7 +18,7 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple
 from urllib.request import urlopen
 from urllib.error import URLError
@@ -41,12 +41,14 @@ AGENT_SIGNATURES: dict = {
         "default_port": 8080,
         "default_endpoint": "http://localhost:8080",
         "cli_probe_args": ["agents", "list"],
+        "default_mode": "agent",
     },
     "hermes": {
         "agent_type": AgentType.HERMES,
         "default_port": 3000,
         "default_endpoint": "http://localhost:3000",
         "cli_probe_args": ["--version"],
+        "default_mode": "llm",
     },
 }
 
@@ -77,9 +79,11 @@ class DetectionResult:
     found: bool
     agent_type: AgentType = AgentType.CUSTOM
     endpoint: str = ""
-    source: str = ""              # "http" / "cli" / "process"
+    source: str = ""              # "http" / "cli" / "process" / "acp"
     confidence: float = 0.0       # 0.0 - 1.0
     endpoint_verified: bool = False  # endpoint 是否经 HTTP 实测验证
+    version: str = ""             # agent 版本号 (若可获取)
+    capabilities: List[str] = field(default_factory=list)
 
 
 def _port_to_agent_type(port: int) -> Tuple[AgentType, bool]:
@@ -99,6 +103,8 @@ def _probe_http(timeout: float) -> DetectionResult:
     仅对开放端口执行 HTTP 健康检查。
     """
     start = time.monotonic()
+
+    import json as _json
 
     def _check_port(port: int) -> Optional[DetectionResult]:
         remaining = timeout - (time.monotonic() - start)
@@ -134,6 +140,16 @@ def _probe_http(timeout: float) -> DetectionResult:
                     # 先尝试 body 内容匹配（高置信度）
                     for name, sig in AGENT_SIGNATURES.items():
                         if name in body_lower:
+                            # Try extract version info from body
+                            _version = ""
+                            _caps = []
+                            try:
+                                _data = _json.loads(body)
+                                _version = _data.get("version", _data.get("app_version", ""))
+                                if isinstance(_data.get("models"), list):
+                                    _caps = [m.get("id","") for m in _data["models"][:5] if isinstance(m, dict)]
+                            except Exception:
+                                pass
                             return DetectionResult(
                                 found=True,
                                 agent_type=sig["agent_type"],
@@ -141,9 +157,17 @@ def _probe_http(timeout: float) -> DetectionResult:
                                 source="http",
                                 confidence=0.9,
                                 endpoint_verified=True,
+                                version=_version,
+                                capabilities=_caps,
                             )
                     # body 无标识，靠端口推断（降低置信度）
                     agent_type, is_known = _port_to_agent_type(port)
+                    _version = ""
+                    try:
+                        _data = _json.loads(body)
+                        _version = _data.get("version", _data.get("app_version", ""))
+                    except Exception:
+                        pass
                     return DetectionResult(
                         found=True,
                         agent_type=agent_type,
@@ -151,6 +175,7 @@ def _probe_http(timeout: float) -> DetectionResult:
                         source="http",
                         confidence=0.7 if is_known else 0.5,
                         endpoint_verified=True,
+                        version=_version,
                     )
             except URLError:
                 continue
@@ -274,6 +299,23 @@ ProbeFn = Callable[[float], DetectionResult]
 _PROBE_STRATEGIES: List[ProbeFn] = [_probe_http, _probe_cli, _probe_process]
 
 
+
+def resolve_default_mode(
+    agent_type: AgentType, endpoint_verified: bool
+) -> str:
+    """Determine default communication mode from agent signature.
+
+    Uses the ``default_mode`` field in :data:`AGENT_SIGNATURES`.
+    When the signature says ``"llm"`` but the endpoint has not been
+    verified via HTTP, we fall back to ``"agent"`` for safety.
+    """
+    sig = AGENT_SIGNATURES.get(agent_type.value, {})
+    default = sig.get("default_mode", "agent")
+    if default == "llm" and not endpoint_verified:
+        return "agent"
+    return default
+
+
 class AgentDetector:
     """自动检测本机 AI Agent。
 
@@ -330,18 +372,24 @@ def detect_and_configure(config_manager, timeout: float = _MAX_TIMEOUT) -> Detec
     result = AgentDetector.detect(timeout=timeout)
 
     if result.found:
+        mode = resolve_default_mode(
+            result.agent_type, result.endpoint_verified
+        )
+
         new_config = AgentConfig(
             enabled=True,
             agent_type=result.agent_type,
             endpoint=result.endpoint,
             api_key="",
             timeout=30,
+            mode=mode,
         )
         config_manager.config.agent = new_config
         config_manager.config.agent_auto_detected = True
         config_manager.save()
-        _log.info("auto-detected %s at %s, agent enabled",
-                  result.agent_type.value, result.endpoint)
+        _log.info("auto-detected %s at %s (mode=%s, verified=%s, version=%s)",
+                  result.agent_type.value, result.endpoint, mode,
+                  result.endpoint_verified, result.version or "unknown")
     else:
         _log.info("no local agent detected, AI features will be hidden")
 

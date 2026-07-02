@@ -8,6 +8,7 @@ from .detector import (
     AgentDetector,
     DetectionResult,
     detect_and_configure,
+    resolve_default_mode,
     HEALTH_PATHS,
     AGENT_SIGNATURES,
 )
@@ -18,6 +19,7 @@ __all__ = [
     'AgentDetector',
     'DetectionResult',
     'detect_and_configure',
+    'resolve_default_mode',
     'HEALTH_PATHS',
     'AGENT_SIGNATURES',
 ]

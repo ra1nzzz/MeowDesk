@@ -65,12 +65,43 @@ def _is_windows_dark_mode() -> bool:
         return True                      # fallback to dark
 
 
+def _is_macos_dark_mode() -> bool:
+    """Detect macOS dark-mode preference from NSUserDefaults."""
+    try:
+        from Foundation import NSUserDefaults
+        defaults = NSUserDefaults.standardUserDefaults()
+        # AppleInterfaceStyle returns "Dark" when in dark mode, nil otherwise
+        style = defaults.stringForKey_("AppleInterfaceStyle")
+        return style is not None and style.lower() == "dark"
+    except Exception:
+        # Fallback: try via defaults command
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["defaults", "read", "-g", "AppleInterfaceStyle"],
+                capture_output=True, text=True
+            )
+            return "dark" in result.stdout.lower()
+        except Exception:
+            return True  # fallback to dark
+
+
+def _is_system_dark_mode() -> bool:
+    """Detect system dark mode based on platform."""
+    import sys
+    if sys.platform == "darwin":
+        return _is_macos_dark_mode()
+    elif sys.platform == "win32":
+        return _is_windows_dark_mode()
+    return True  # fallback to dark
+
+
 def resolve_colors(color_mode: str) -> dict:
     """Return the correct palette dict based on *color_mode*."""
     if color_mode == "light":
         return dict(LIGHT_COLORS)
     if color_mode == "system":
-        return dict(DARK_COLORS) if _is_windows_dark_mode() else dict(LIGHT_COLORS)
+        return dict(DARK_COLORS) if _is_system_dark_mode() else dict(LIGHT_COLORS)
     return dict(DARK_COLORS)
 
 
@@ -636,7 +667,6 @@ class SettingsPanel:
         c = self.COLORS
         r = 8  # corner radius
         pad_x = 18
-        pad_y = 7
 
         if canvas_bg is None:
             canvas_bg = c['bg']
@@ -871,6 +901,8 @@ class SettingsPanel:
         timeout_row = self.tk.Frame(card, bg=c['entry_bg'])
         timeout_row.pack(anchor='w')
         self.timeout_var = self.tk.IntVar(value=self.config.agent_config.timeout)
+        self.mode_var = self.tk.StringVar(value=getattr(self.config.agent_config, 'mode', 'agent'))
+        self.model_var = self.tk.StringVar(value=getattr(self.config.agent_config, 'model', ''))
         self.tk.Spinbox(timeout_row, textvariable=self.timeout_var, from_=5, to=120,
                         bg=c['bg_input'], fg=c['fg'], insertbackground=c['fg'],
                         relief="flat", font=("Microsoft YaHei", 10), width=6).pack(side='left')
@@ -1181,6 +1213,11 @@ class SettingsPanel:
             self.agent_type_var.set(result.agent_type.value)
             self.endpoint_var.set(result.endpoint)
             self.ai_enabled_var.set(True)
+            # Auto-select communication mode using shared policy
+            from ..agent.detector import resolve_default_mode
+            self.mode_var.set(
+                resolve_default_mode(result.agent_type, result.endpoint_verified)
+            )
             self._agent_detect_label.config(
                 text=f"已检测到 {type_name} ({result.endpoint})",
                 fg=self.COLORS.get('success', '#4CAF50'),
@@ -1317,6 +1354,8 @@ class SettingsPanel:
             agent_config.endpoint = self.endpoint_var.get().strip()
             agent_config.api_key = self.token_var.get().strip()
             agent_config.timeout = self.timeout_var.get()
+            agent_config.mode = self.mode_var.get()
+            agent_config.model = self.model_var.get().strip()
             self.config.config.agent = agent_config
 
             period = self.config.config.period

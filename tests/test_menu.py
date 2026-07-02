@@ -83,7 +83,8 @@ def test_settings_panel_keeps_footer_buttons_visible():
             panel = SettingsPanel(root, config)
             panel.window.update_idletasks()
 
-            assert len(panel.notebook.tabs()) == 4
+            # New SettingsPanel uses custom sidebar with _tab_frames
+            assert len(panel._tab_frames) == 4
 
             children = panel.button_frame.winfo_children()
             assert len(children) >= 2
@@ -100,9 +101,8 @@ def test_settings_panel_keeps_footer_buttons_visible():
 def test_settings_panel_save_persists_typed_values(monkeypatch):
     from meowdesk.ui.settings import SettingsPanel
 
-    try:
-        import tkinter
-    except ImportError:
+    import importlib.util
+    if importlib.util.find_spec("tkinter") is None:
         pytest.skip("Tk unavailable: tkinter not installed")
         return
     monkeypatch.setattr("tkinter.messagebox.showinfo", lambda *_, **__: None)
@@ -152,9 +152,8 @@ def test_settings_panel_save_persists_typed_values(monkeypatch):
 def test_settings_panel_save_persists_launch_at_startup(monkeypatch):
     from meowdesk.ui.settings import SettingsPanel
 
-    try:
-        import tkinter
-    except ImportError:
+    import importlib.util
+    if importlib.util.find_spec("tkinter") is None:
         pytest.skip("Tk unavailable: tkinter not installed")
         return
     monkeypatch.setattr("tkinter.messagebox.showinfo", lambda *_, **__: None)

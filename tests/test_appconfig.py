@@ -22,6 +22,9 @@ def test_scalar_field_names_lists_expected_keys():
         "window_position",
         "scale",
         "launch_at_startup",
+        "first_run_completed",
+        "agent_auto_detected",
+        "color_mode",
     }
     assert set(AppConfig.scalar_field_names()) == expected
 
@@ -146,3 +149,19 @@ def test_get_default_provides_categories():
     config = AppConfig.get_default()
     assert "截图" in config.categories
     assert "文档" in config.categories
+
+
+def test_from_dict_recovers_agent_mode_and_model():
+    rebuilt = AppConfig.from_dict(
+        {"agent": {"enabled": True, "mode": "llm", "model": "deepseek-chat"}}
+    )
+    assert rebuilt.agent.mode == "llm"
+    assert rebuilt.agent.model == "deepseek-chat"
+
+
+def test_to_dict_serialises_agent_mode_and_model():
+    from meowdesk.core.types import AgentConfig
+    config = AppConfig(agent=AgentConfig(mode="llm", model="gpt-4"))
+    data = config.to_dict()
+    assert data["agent"]["mode"] == "llm"
+    assert data["agent"]["model"] == "gpt-4"

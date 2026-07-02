@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 from meowdesk.core import ConfigManager
 
