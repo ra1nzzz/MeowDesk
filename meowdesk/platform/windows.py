@@ -436,3 +436,73 @@ def is_launch_at_startup() -> bool:
     except OSError:
         return False
 
+
+# meow-locate:// URL scheme —— 导航页"定位"按钮点击后由浏览器调起,
+# 经 locate.bat 桥接到 _locate.py(开发模式)或 EXE --locate(打包模式),
+# 最终调用 explorer.exe /select,<path> 在文件资源管理器中定位文件。
+_LOCATE_PROTOCOL = "meow-locate"
+_LOCATE_PY_CONTENT = (
+    "import base64, subprocess, sys\n"
+    "u = sys.argv[1].replace('meow-locate://', '')\n"
+    "p = base64.b64decode(u).decode('utf-8')\n"
+    "subprocess.Popen(['explorer', '/select,', p])\n"
+)
+
+
+def register_meow_locate_protocol(app_dir: str) -> bool:
+    """Register the ``meow-locate://`` URL scheme so that clicking the
+    "定位" button on the HTML navigation page opens File Explorer and
+    selects the corresponding file.
+
+    Ensures ``locate.bat`` and ``_locate.py`` exist in *app_dir*, then
+    writes the ``HKCU\\Software\\Classes\\meow-locate`` registry key.
+    Safe to call repeatedly. Returns ``True`` on success.
+    """
+    import os
+    import sys
+    import winreg
+
+    try:
+        bat = os.path.join(app_dir, "locate.bat")
+        loc_py = os.path.join(app_dir, "_locate.py")
+
+        # 保持 _locate.py 内容正确(修复历史版本中 scheme 名错误的问题)
+        try:
+            current = open(loc_py, encoding="utf-8").read() if os.path.exists(loc_py) else ""
+        except OSError:
+            current = ""
+        if current != _LOCATE_PY_CONTENT:
+            with open(loc_py, "w", encoding="utf-8") as _f:
+                _f.write(_LOCATE_PY_CONTENT)
+
+        # 生成 locate.bat:打包模式自调 EXE --locate,开发模式调 python _locate.py
+        if getattr(sys, "frozen", False):
+            bat_content = (
+                '@echo off\r\n'
+                '"%~dp0' + os.path.basename(sys.executable) + '" --locate "%~1"\r\n'
+            )
+        else:
+            bat_content = (
+                '@echo off\r\n'
+                'set PYTHONHOME=\r\n'
+                'set PYTHONPATH=\r\n'
+                f'"{sys.executable}" "%~dp0_locate.py" "%~1"\r\n'
+            )
+        try:
+            current_bat = open(bat, encoding="utf-8").read() if os.path.exists(bat) else ""
+        except OSError:
+            current_bat = ""
+        if current_bat != bat_content:
+            with open(bat, "w", encoding="utf-8") as _f:
+                _f.write(bat_content)
+
+        # 写入注册表:将 meow-locate:// 关联到 locate.bat
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\meow-locate") as key:
+            winreg.SetValue(key, None, winreg.REG_SZ, "URL:meow-locate Protocol")
+            winreg.SetValueEx(key, "URL Protocol", 0, winreg.REG_SZ, "")
+            with winreg.CreateKey(key, r"shell\open\command") as shell:
+                winreg.SetValue(shell, None, winreg.REG_SZ, f'"{bat}" "%1"')
+        return True
+    except OSError:
+        return False
+
