@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from meowdesk import setup_logging
 from meowdesk.core import ConfigManager, FileDatabase
 from meowdesk.platform import register_meow_locate_protocol
+from meowdesk.updater import UpdateManager, start_background_check
 from meowdesk.ui import MeowWindow
 
 
@@ -134,8 +135,23 @@ def main():
     _log.info("creating window")
     window = MeowWindow(config, db, assets_dir)
 
+    # OTA: 检测更新后状态,若由 updater.bat 启动则调度验证标记
+    update_mgr = UpdateManager(config, app_dir)
+    if update_mgr.is_post_update():
+        _log.info("post-update state detected, scheduling verification")
+
     try:
         window.create()
+
+        # 窗口创建成功 → 如果是更新后首次启动,调度验证标记(5 秒后)
+        # 5 秒内崩溃则标记不会创建,updater.bat 会自动回滚
+        if update_mgr.is_post_update() and window.parent is not None:
+            update_mgr.schedule_verification(window.parent)
+            _log.info("update verification scheduled")
+
+        # 启动后台检查更新(daemon 线程,不影响退出)
+        start_background_check(window, config, app_dir)
+
         _log.info("window ready; entering main loop")
         window.run()
     except KeyboardInterrupt:

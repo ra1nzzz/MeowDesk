@@ -166,6 +166,10 @@ ICON_DATA = {
         ('circle', 12, 12, 10),
         ('path', 'M12 16v-4 M12 8h.01'),
     ],
+    "检查更新": [
+        ('path', 'M21 12a9 9 0 1 1-6.219-8.56'),
+        ('polyline', [18, 2, 22, 6, 18, 6]),
+    ],
     "退出": [
         ('path', 'M18.36 6.64a9 9 0 1 1-12.73 0'),
         ('path', 'M12 2v10'),
@@ -507,7 +511,7 @@ def _build_menu_order(agent_available: bool) -> list:
     order.append(None)  # separator before toolbox
     order.append("SUBMENU")
     order.append(None)  # separator before settings
-    order += ["设置", "关于", None, "退出"]
+    order += ["设置", "检查更新", "关于", None, "退出"]
     return order
 
 

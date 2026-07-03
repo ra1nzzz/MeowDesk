@@ -225,6 +225,9 @@ class AppConfig:
     color_mode: str = "dark"             # dark / light / system
     first_run_completed: bool = False     # 是否已完成首次运行流程
     agent_auto_detected: bool = False     # agent 是否由自动检测启用
+    auto_check_update: bool = True        # 是否自动检查更新
+    last_update_check: str = ""           # 上次检查更新的 ISO 时间戳
+    skip_update_version: str = ""         # 跳过的版本号
 
     # ---- container / nested fields (require custom (de)serialisation) ----
     # These are deliberately listed *after* the scalar fields so
@@ -247,6 +250,9 @@ class AppConfig:
         "color_mode",
         "first_run_completed",
         "agent_auto_detected",
+        "auto_check_update",
+        "last_update_check",
+        "skip_update_version",
     )
 
     @classmethod

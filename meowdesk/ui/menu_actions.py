@@ -60,6 +60,7 @@ def build_menu_items(window: "MeowWindow") -> MenuSpec:
     items.append(None)  # separator before settings
     items.extend([
         ("设置", lambda: action_open_settings(window)),
+        ("检查更新", lambda: action_check_update(window)),
         ("关于", lambda: action_show_about(window)),
         None,
         ("退出", window.quit),
@@ -228,6 +229,25 @@ def action_show_about(window: "MeowWindow") -> None:
 
     from .. import __version__
     window.state.show_bubble(f"妙喵桌宠 v{__version__}", 80)
+
+
+def action_check_update(window: "MeowWindow") -> None:
+    """手动检查更新(由"检查更新"菜单项触发)。"""
+
+    parent = getattr(window, "parent", None)
+    if parent is None:
+        return
+
+    # 获取 app_dir(打包模式为 EXE 同级目录,开发模式为脚本目录)
+    import os
+    import sys
+    if getattr(sys, "frozen", False):
+        app_dir = os.path.dirname(sys.executable)
+    else:
+        app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    from .update_dialog import check_update_manually
+    check_update_manually(parent, window.config, app_dir)
 
 
 def ensure_archive_dir_writable(window: "MeowWindow", archive_dir: str) -> bool:

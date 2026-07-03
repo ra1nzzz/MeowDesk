@@ -25,6 +25,9 @@ def test_scalar_field_names_lists_expected_keys():
         "first_run_completed",
         "agent_auto_detected",
         "color_mode",
+        "auto_check_update",
+        "last_update_check",
+        "skip_update_version",
     }
     assert set(AppConfig.scalar_field_names()) == expected
 

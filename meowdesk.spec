@@ -1,6 +1,6 @@
-﻿# -*- mode: python ; coding: utf-8 -*-
+# -*- mode: python ; coding: utf-8 -*-
 # Directory mode: exe with separate _internal folder
-# MeowDesk v1.4.0 - New modular architecture
+# MeowDesk v1.6.0 - New modular architecture
 
 a = Analysis(
     ['meowdesk_main.py'],
@@ -18,6 +18,7 @@ a = Analysis(
         'meowdesk.agent',
         'meowdesk.platform',
         'meowdesk.ui',
+        'meowdesk.updater',
         'windnd',
     ],
     hookspath=[],
