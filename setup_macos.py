@@ -31,8 +31,8 @@ OPTIONS = {
         'CFBundleName': 'MeowDesk',
         'CFBundleDisplayName': '妙喵桌宠',
         'CFBundleIdentifier': 'com.meowdesk.app',
-        'CFBundleVersion': '1.5.0',
-        'CFBundleShortVersionString': '1.5.0',
+        'CFBundleVersion': '1.6.1',
+        'CFBundleShortVersionString': '1.6.1',
         'LSMinimumSystemVersion': '10.15.0',
         'NSHighResolutionCapable': True,
         'LSUIElement': False,  # 显示在 Dock

@@ -22,27 +22,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from meowdesk import setup_logging
 from meowdesk.core import ConfigManager, FileDatabase
-from meowdesk.platform import register_meow_locate_protocol
+from meowdesk.locate import handle_locate_invocation, register_locate_protocol
 from meowdesk.updater import UpdateManager, start_background_check
 from meowdesk.ui import MeowWindow
 
 
 _log = logging.getLogger("meowdesk.main")
-
-
-def _handle_locate_arg(url: str) -> None:
-    """--locate 模式:解析 meow-locate:// URL 并在文件资源管理器中定位文件。
-
-    由打包后的 EXE 通过 locate.bat 自调,执行完立即退出,不创建窗口。
-    """
-    import base64
-    import subprocess
-    try:
-        u = url.replace("meow-locate://", "")
-        p = base64.b64decode(u).decode("utf-8")
-        subprocess.Popen(["explorer", "/select,", p])
-    except Exception:
-        _log.exception("failed to handle --locate url: %s", url)
 
 
 def get_app_dir():
@@ -88,9 +73,8 @@ def get_bundle_dir():
 
 def main():
     """主函数"""
-    # --locate 模式:由 meow-locate:// 协议经 locate.bat 自调,仅定位文件后退出
-    if len(sys.argv) > 2 and sys.argv[1] == "--locate":
-        _handle_locate_arg(sys.argv[2])
+    # 协议处理程序只定位文件后退出，不能先创建桌宠窗口。
+    if handle_locate_invocation(sys.argv[1:]):
         return
 
     app_dir = get_app_dir()
@@ -110,11 +94,11 @@ def main():
         _log.info("log file: %s", log_file)
     _log.info("assets dir: %s", assets_dir)
 
-    # 注册 meow-locate:// 协议,使导航页"定位"按钮可调起文件资源管理器
-    if register_meow_locate_protocol(app_dir):
-        _log.info("meow-locate:// protocol registered")
-    else:
-        _log.warning("failed to register meow-locate:// protocol")
+    # 注册 meow-locate: 协议。旧注册会把路径放进 URL host，浏览器会改坏链接。
+    if register_locate_protocol():
+        _log.info("meow-locate protocol registered")
+    elif sys.platform == "win32":
+        _log.warning("failed to register meow-locate protocol")
 
     # 配置文件
     config_file = os.path.join(app_dir, 'config.json')

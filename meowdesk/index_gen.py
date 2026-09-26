@@ -1,6 +1,5 @@
 """HTML index generator for MeowDesk file archive."""
 
-import base64
 import json
 import os
 import re
@@ -130,8 +129,8 @@ def _build_rows(records: List[Dict[str, Any]]) -> str:
         path_short = os.path.basename(dest) if dest and dest != "(已回收)" else "(已回收)"
         locate = ""
         if dest and dest != "(已回收)" and action == "archive":
-            enc = base64.b64encode(dest.encode("utf-8")).decode("ascii")
-            locate = ' <a class="btn-locate" href="meow-locate://' + enc + '">定位</a>'
+            from .locate import locate_protocol_url
+            locate = ' <a class="btn-locate" href="' + locate_protocol_url(dest) + '">定位</a>'
         rows.append(
             '<tr>'
             '<td data-cat="' + cat + '"><span class="cat-dot" style="background:' + color + '"></span> ' + emoji + ' ' + cat + '</td>'

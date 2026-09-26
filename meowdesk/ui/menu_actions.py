@@ -69,17 +69,24 @@ def build_menu_items(window: "MeowWindow") -> MenuSpec:
     return items
 
 
+def _open_local_html(html_file: str) -> None:
+    webbrowser.open(f"file://{html_file}")
+
+
 def action_open_html(window: "MeowWindow") -> None:
     """Open the HTML index in the default browser."""
 
     archive_dir = window.config.archive_dir
     if not ensure_archive_dir_writable(window, archive_dir):
         return
+    from ..locate import register_locate_protocol
+    if not register_locate_protocol():
+        window.state.show_bubble("定位协议注册失败，导航页定位可能无法打开资源管理器", 80)
+    # 已打开过的导航页仍是旧链接，浏览器会改坏 host 里的路径。每次打开都重写。
+    window._update_html()
     html_file = os.path.join(archive_dir, "index.html")
-    if not os.path.exists(html_file):
-        window._update_html()
     if os.path.exists(html_file):
-        webbrowser.open(f"file://{html_file}")
+        _open_local_html(html_file)
     else:
         window.state.show_bubble("导航页生成失败", 60)
 
